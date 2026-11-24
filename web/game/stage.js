@@ -1,6 +1,6 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
 import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp } from './core.js';
-import { nav, Notice } from './widgets.js';
+import { nav, Notice, CardReveal } from './widgets.js';
 import { generateLevel } from './levelgen.js';
 
 const U = 64;                 // 1 유닛 = 64px
@@ -12,9 +12,11 @@ const ROBOT_R = 0.38;
 // 힌트(세종실록지리지)와 사실에 맞게 '세종실록'을 정답으로 고침
 const STAGE9_FIX = '세종실록';
 const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들이 독도에 대한 기억을 잊어버리게 했는데...', '어째서 너는 이렇게 독도에 \n대해 잘 알고 있는 거지?', '좋다... 재밌군... \n그렇다면 다음 스테이지로 넘어와라.', '나를 다시 찾아온다면 독도를 걸고 승부하자. 기다리고 있겠다...'];
+// 9스테이지에서 로보킹을 처음 만났을 때 (원작 대사)
+const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 function mix(a, b, f) {
   const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
@@ -82,7 +84,7 @@ export class StageScene {
     this.start = [d.start[0], d.start[1] + 0.2];
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
-    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
+    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, jt: 0.5 + Math.random() * 1.5, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
     // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
     for (const rb of this.robots) {
       const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
@@ -96,10 +98,13 @@ export class StageScene {
       }
       if (best) { rb.x = rb.sx0 = best.x + best.w / 2; rb.y = rb.sy0 = best.y + best.h + ROBOT_R + 0.02; }
     }
+    // 움직이는 발판 (엘리베이터·나룻배)
+    this.movers = (d.movers || []).map(m => ({ ...m, x: m.x0, y: m.top - 1, w: m.w, h: 1, t: m.phase / ((m.speed * Math.PI) / Math.max(m.ax, m.ay)) }));
+    for (const m of this.movers) this.placeMover(m);
     this.spirit = d.spirit && !save.rescued[n - 1] ? { ...d.spirit, got: false } : null;
     this.door = { ...d.door, open: false };
     this.flag = d.flag;
-    this.p = { x: this.start[0], y: this.start[1], vx: 0, vy: 0, ground: false, coyote: 0, buffer: 0, airJumps: 1, puff: 0, face: 1, anim: 0, blink: 0 };
+    this.p = { lastGround: this.start[1], x: this.start[0], y: this.start[1], vx: 0, vy: 0, ground: false, coyote: 0, buffer: 0, airJumps: 1, puff: 0, face: 1, anim: 0, blink: 0 };
     this.cam = { x: this.p.x, y: this.p.y };
     this.notice = new Notice();
     this.modal = null;       // 열쇠 힌트·퀴즈 같은 큰 창
@@ -122,7 +127,35 @@ export class StageScene {
   // ---------------------------------------------------------------- 물리
   collide(box, list) { for (const s of list) if (box.x < s.x + s.w && box.x + box.w > s.x && box.y < s.y + s.h && box.y + box.h > s.y) return s; return null; }
   pbox(p = this.p) { return { x: p.x - PW / 2, y: p.y - 0.38, w: PW, h: PH }; }
-  solidList() { return this.door && !this.door.open && this.door.box ? [...this.solids, { x: this.door.box[0], y: this.door.box[1], w: this.door.box[2], h: this.door.box[3], door: true }] : this.solids; }
+  solidList() {
+    const list = this.movers.length ? [...this.solids, ...this.movers] : this.solids;
+    return this.door && !this.door.open && this.door.box ? [...list, { x: this.door.box[0], y: this.door.box[1], w: this.door.box[2], h: this.door.box[3], door: true }] : list;
+  }
+  // 움직이는 발판: 양 끝에서 천천히 멈췄다 돌아오는 왕복 운동
+  placeMover(m) {
+    const range = Math.max(m.ax, m.ay), w = (m.speed * Math.PI) / range;
+    const f = 0.5 - 0.5 * Math.cos(m.t * w);
+    m.x = m.x0 + m.ax * f; m.y = m.top - 1 + m.ay * f;
+  }
+  updateMovers(dt) {
+    const p = this.p;
+    const feet = p.y - 0.38;
+    for (const m of this.movers) {
+      const ox = m.x, oy = m.y;
+      const riding = p.vy <= 0.01 && Math.abs(feet - (m.y + m.h)) < 0.08 && p.x + PW / 2 > m.x && p.x - PW / 2 < m.x + m.w;
+      m.t += dt; this.placeMover(m);
+      const dx = m.x - ox, dy = m.y - oy;
+      if (riding) { p.x += dx; p.y += dy; continue; }
+      // 타고 있지 않은데 발판이 주인공을 밀면 밖으로 밀어내기
+      const b = this.pbox();
+      if (this.collide(b, [m])) {
+        const pushUp = (m.y + m.h) - b.y, pushDown = (b.y + b.h) - m.y, pushL = (b.x + b.w) - m.x, pushR = (m.x + m.w) - b.x;
+        const k = Math.min(pushUp, pushDown, pushL, pushR);
+        if (k === pushUp) { p.y += pushUp + 1e-3; p.vy = Math.max(p.vy, 0); } else if (k === pushDown) { p.y -= pushDown + 1e-3; p.vy = Math.min(p.vy, 0); }
+        else if (k === pushL) p.x -= pushL + 1e-3; else p.x += pushR + 1e-3;
+      }
+    }
+  }
   moveBody(o, dx, dy, getBox, list) {
     // x축 이동 후 y축 이동 (겹치면 밀어내기)
     o.x += dx;
@@ -143,6 +176,7 @@ export class StageScene {
     if (this.busy) { this.readTouch(); return; }
     const p = this.p;
     this.readTouch();
+    this.updateMovers(dt);
     const left = keyDown('ArrowLeft', 'KeyA') || this.touch.left;
     const right = keyDown('ArrowRight', 'KeyD') || this.touch.right;
     const jumpHit = keyHit('Space', 'ArrowUp', 'KeyW') || this.touch.jumpHit;
@@ -159,14 +193,15 @@ export class StageScene {
     const r = this.moveBody(p, p.vx * dt, p.vy * dt, o => this.pbox(o), this.solidList());
     p.ground = r.landed;
     if (r.landed || r.bumped) p.vy = 0;
-    if (p.ground) { p.coyote = 0.1; p.airJumps = 1; }
+    if (p.ground) { p.coyote = 0.1; p.airJumps = 1; p.lastGround = p.y; }
     if (r.hitX && r.hitX.door) this.touchDoor();
     p.x = clamp(p.x, this.bounds.l, this.bounds.r);
     p.anim += dt;
     if (p.blink > 0) p.blink -= dt;
     if (p.puff > 0) p.puff -= dt;
     // 떨어지거나 죽는 땅에 닿으면 처음 자리로
-    if (p.y < this.bounds.b - 3 || this.collide(this.pbox(), this.deadly)) this.respawn();
+    // 맨 아래로 떨어지거나, 마지막으로 서 있던 곳보다 한참(16칸) 아래로 떨어지면 체크포인트로
+    if (p.y < this.bounds.b - 3 || p.y < p.lastGround - 16 || this.collide(this.pbox(), this.deadly)) this.respawn();
 
     // 로봇
     for (const rb of this.robots) {
@@ -175,6 +210,15 @@ export class StageScene {
       const box = o => ({ x: o.x - ROBOT_R, y: o.y - ROBOT_R, w: ROBOT_R * 2, h: ROBOT_R * 2 });
       const res = this.moveBody(rb, rb.vx * dt, rb.vy * dt, box, this.solids);
       if (res.landed || res.bumped) rb.vy = 0;
+      // 파란 로봇은 가끔 폴짝 뛰어오름 (스테이지가 오를수록 자주, 높이)
+      if (rb.blue && !rb.solved && res.landed) {
+        rb.jt -= dt;
+        if (rb.jt <= 0) {
+          rb.jt = 0.9 + Math.random() * 1.6;
+          if (Math.random() < 0.35 + 0.04 * this.n) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; }
+        }
+      }
+      if (rb.hop > 0) rb.hop -= dt;
       if (rb.walk) {
         // 벽에 부딪히거나 발밑이 비면 돌아서기
         const ahead = { x: rb.x + Math.sign(rb.vx) * (ROBOT_R + 0.05) - 0.05, y: rb.y - ROBOT_R - 0.2, w: 0.1, h: 0.15 };
@@ -235,13 +279,14 @@ export class StageScene {
   }
   respawn() {
     const p = this.p;
-    p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2;
+    p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2; p.lastGround = p.y;
   }
   touchDoor() {
     if (this.modal) return;
     const d = this.d;
     if (!this.keys.some(k => k.got)) { this.modal = { type: 'msg', text: d.noKeyText === '...... ....... ....... ....... .......' ? d.noKeyText : '열쇠를 얻어와라!!!!!', face: this.n >= 9 ? 'king' : 'daddy' }; this.p.x -= 0.4 * Math.sign(this.door.x - this.p.x || 1); return; }
     if (this.n === 10) { this.modal = { type: 'seq', texts: KING_GATE, face: 'king', then: () => this.openDoor() }; return; }
+    if (this.n === 9 && !this.kingMet) { this.kingMet = true; this.modal = { type: 'seq', texts: KING_MEET, face: 'king', then: () => { this.modal = { type: 'quiz', picked: null }; } }; return; }
     this.modal = { type: 'quiz', picked: null };
   }
   openDoor() { this.door.open = true; audio.sfx('good'); }
@@ -311,13 +356,25 @@ export class StageScene {
       if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ff9a70', dd * 0.85); ctx.fillRect(0, 0, W, H); ctx.restore(); }
     }
     for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
+    // 움직이는 발판: 지나가는 길을 점선으로 보여 주고 발판은 노란 테두리로
+    for (const m of this.movers) {
+      const [ax, ay] = this.w2s(m.x0 + m.w / 2, m.top - 0.5), [bx, by] = this.w2s(m.x0 + m.ax + m.w / 2, m.top - 0.5 + m.ay);
+      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 4; ctx.setLineDash([10, 12]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.restore();
+      for (let k = 0; k < m.w; k++) {
+        const s = m.w === 1 ? 'Platforms__Single' : k === 0 ? 'Platforms__Single_Left' : k === m.w - 1 ? 'Platforms__Single_Right' : 'Platforms__Single';
+        this.drawWorldSprite(spriteInfo(s), m.x + k + 0.5, m.y + 0.5, 1, 1);
+      }
+      const [px, py] = this.w2s(m.x, m.y + 1);
+      ctx.save(); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(px + 2, py + 2, m.w * U - 4, U - 4); ctx.restore();
+    }
     for (const dc of this.d.deco) if (!dc.bg && dc.s) this.drawWorldSprite(spriteInfo(dc.s), dc.x, dc.y, dc.sx, dc.sy);
     // 깃발과 문지기
     if (this.flag) this.drawWorldSprite(spriteInfo(this.flag.s), this.flag.x, this.flag.y, this.flag.sx, this.flag.sy);
     if (this.door) {
       const king = this.n >= 9;
       const fr = Math.floor(this.t * 2) % 2;
-      this.drawSheet(king ? 'roboking' : 'daddy_small', king ? [fr * 81, 0, 80, 80] : [fr * 82, 0, 82, 82], this.door.x, this.door.y, 1.85, this.door.sx < 0, this.door.open ? 0.45 : 1);
+      this.drawSheet(king ? 'roboking' : 'daddy_small', king ? [fr * 81, 0, 80, 80] : [fr * 82, 0, 82, 82], this.door.x, this.door.y, 1.85, king ? this.p.x > this.door.x : this.p.x < this.door.x, this.door.open ? 0.45 : 1);
       if (!this.door.open) {
         const [px, py] = this.w2s(this.door.x, this.door.y + 1.5);
         if (px > -100 && px < W + 100) { panel(px - 34, py - 30, 68, 40, { r: 8, inner: false, lw: 3 }); text('?', px, py - 26, { size: 30, align: 'center', color: '#c0392b' }); }
@@ -335,7 +392,7 @@ export class StageScene {
       const blue = rb.blue;
       const fr = Math.floor(rb.t * (rb.walk ? 8 : 5)) % 8;
       const frame = blue ? [fr * 81, 0, 80, 80] : [fr * 80, 0, 80, 80];
-      this.drawSheet(blue ? 'robo_blue' : 'robo_red', frame, rb.x, rb.y + 0.02, 0.95, rb.vx > 0, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      this.drawSheet(blue ? 'robo_blue' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, rb.vx > 0, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
       if (rb.q && !rb.solved) {
         const [px, py] = this.w2s(rb.x, rb.y + 0.9);
         if (px > -50 && px < W + 50) text('?', px, py - 16, { size: 28, align: 'center', color: '#3b8ede', stroke: '#fff', strokeW: 5 });
@@ -367,7 +424,7 @@ export class StageScene {
     this.notice.draw(2);
   }
   drawMinimap() {
-    const x = W - 270, y = 78, w = 250, h = 96;
+    const x = W - 270, y = 78, w = 250, h = 130;
     // 맵이 길면 주인공 주변 70칸만 보여 줌
     const b = this.bounds, span = Math.min(70, b.r - b.l + 2);
     const L = clamp(this.p.x - span / 2, b.l - 1, Math.max(b.l - 1, b.r + 1 - span)), R = L + span;
@@ -379,6 +436,8 @@ export class StageScene {
     ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
     ctx.fillStyle = '#7a5a3a';
     for (const s of this.solids) ctx.fillRect(mx(s.x), my(s.y + s.h), Math.max(1.5, s.w * sc), Math.max(1.5, 0.6 * sc));
+    ctx.fillStyle = '#e0a800';
+    for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
     for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
@@ -539,14 +598,17 @@ export class RobotQuizScene {
   constructor(qid, back, onSolved) {
     this.q = game.data.robotQuestions[qid]; this.back = back; this.onSolved = onSolved;
     this.i = 0; this.t = 0; this.state = 'intro'; this.msg = null;
+    this.reveal = new CardReveal();
   }
   enter() { audio.play('roboking_battle'); }
   update(dt) {
     this.t += dt;
+    this.reveal.update(dt);
     if (this.state === 'intro' && this.t > 3.2) { this.t = 0; if (++this.i >= this.q.intro.length) this.state = 'question'; }
   }
   draw() {
-    beginUI(0);
+    const L = this.reveal.open ? 1 : 0;
+    beginUI(L);
     drawCover(img('bg19'), 0, 0, W, H);
     const robot = (txt) => {
       panel(120, 470, W - 240, 200, { fill: 'rgba(235,245,255,.96)', line: '#1f3b5a' });
@@ -570,8 +632,12 @@ export class RobotQuizScene {
             if (first) {
               save.robotQ[this.q.flag] = true; save.dp += 5;
               const qn = parseInt(this.q.flag.slice(1), 10);
+              const fresh = qn >= 1 && qn <= 24 && !save.creature[qn - 1];
               if (qn >= 1 && qn <= 24) save.creature[qn - 1] = true;
               persist();
+              const card = game.data.hub.creatureCards[qn - 1];
+              // 카드 뽑기처럼: 뒷면 카드를 눌러야 무슨 카드인지 나옴
+              if (card) this.reveal.show({ pic: card.pic, frame: card.frame, kind: '생물 카드', name: card.quote, extra: (fresh ? '' : '(이미 가진 카드) · ') + '독도 포인트 +5' });
             }
             this.onSolved?.();
           } else { audio.sfx('bad'); this.state = 'wrong'; this.msg = this.q.wrong[Math.floor(Math.random() * this.q.wrong.length)]; }
@@ -581,18 +647,9 @@ export class RobotQuizScene {
       robot(this.msg);
       if (button('다시 풀기', W - 300, 600, 220, 64) || keyHit('Enter', 'Space')) this.state = 'question';
     } else if (this.state === 'right') {
-      robot(this.q.right);
-      if (this.first) {
-        panel(W / 2 - 230, 60, 460, 380, {});
-        drawFit(img('card_normal'), W / 2 - 90, 80, 180, 180);
-        const qn = parseInt(this.q.flag.slice(1), 10), card = game.data.hub.creatureCards[qn - 1];
-        if (card?.pic) drawFit(img('cr_' + card.pic), W / 2 - 55, 112, 110, 110);
-        if (card) text(card.quote, W / 2, 236, { size: 22, align: 'center', color: '#5a4a3a' });
-        text('생물카드를', W / 2, 270, { size: 40, align: 'center' });
-        text('획득했다!!!', W / 2, 330, { size: 40, align: 'center', color: '#c0392b' });
-        text('독도 포인트 +5', W / 2, 390, { size: 28, align: 'center', color: '#5a4a3a' });
-      }
-      if (button('돌아가기', W - 300, 600, 220, 64) || keyHit('Enter', 'Space')) go(this.back);
+      if (!this.reveal.open) robot(this.q.right);
+      if (!this.reveal.open && (button('돌아가기', W - 300, 600, 220, 64) || keyHit('Enter', 'Space'))) go(this.back);
     }
+    this.reveal.draw(1);
   }
 }

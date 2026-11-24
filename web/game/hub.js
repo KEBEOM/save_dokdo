@@ -1,6 +1,6 @@
 // 시작 화면, 독도 마을(허브), 게임 선택 화면
 import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
-import { nav, drawPoints, Notice, Reader, iconButton } from './widgets.js';
+import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이편', '화산섬의 탄생순서', '독도와 울릉도의 거리편', '독도의 지하자원', '독도의 이름편 -1-', '독도의 이름편 -2-', '독도와 지도편', '독도의 역사편 -1-', '독도의 역사편 -2-', '독도와 일본편'];
 export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', '안용복편', '홍순칠편', '누군가가 고의로 버린 문서'];
@@ -53,7 +53,7 @@ export function soundButton(layer = 0) {
 // ================================================================ 독도 마을
 export class HubScene {
   constructor() {
-    this.notice = new Notice(); this.reader = new Reader();
+    this.notice = new Notice(); this.reader = new Reader(); this.reveal = new CardReveal();
     this.panel = null; this.page = 0; this.t = 0;
     this.walkers = [];
     this.bubble = null;
@@ -65,9 +65,10 @@ export class HubScene {
       if (on) this.walkers.push({ i, x: 260 + Math.random() * 760, y: 520 + Math.random() * 80, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
     });
   }
-  get layer() { return this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
+  get layer() { return this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
   update(dt) {
     this.t += dt;
+    this.reveal.update(dt);
     for (const w of this.walkers) {
       w.tNext -= dt;
       if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
@@ -116,6 +117,7 @@ export class HubScene {
     if (this.panel) { dim(0.5); this['draw_' + this.panel](); }
     this.reader.draw(2);
     this.notice.draw(3);
+    this.reveal.draw(4);
   }
   talk(w) {
     const d = game.data;
@@ -284,6 +286,7 @@ export class HubScene {
             save[cur] -= price; owned[i] = true;
             if (isChar) save.characterBuys++; else save.creatureBuys++;
             persist(); audio.sfx('buy');
+            this.reveal.show({ pic: c.pic, frame: c.frame, kind: isChar ? '캐릭터 카드' : '생물 카드', name: isChar ? c.title.split(' [')[0] : c.quote, extra: isChar ? '' : c.title });
           },
         });
       }
@@ -317,11 +320,6 @@ export class HubScene {
   }
 }
 
-function cardPicName(pic) {
-  if (!pic) return null;
-  if (/^(Bird|Fish|Flower|GangChi)/.test(pic)) return 'cr_' + pic;
-  return 'sp/' + pic;
-}
 function cardPic(pic) { const n = cardPicName(pic); return n ? img(n) : null; }
 
 // ================================================================ 게임 선택 (생물 카드 / 달리기 / 마지막 승부)

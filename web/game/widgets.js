@@ -1,5 +1,5 @@
 // 여러 화면에서 함께 쓰는 UI 조각: 포인트 표시, 알림 상자, 긴 글 읽기 창
-import { W, H, ctx, img, drawFit, panel, text, textBox, button, wrap, font, input, hit, inside, save, fmt, dim, rrect, keyHit, ui } from './core.js';
+import { W, H, ctx, img, drawFit, panel, text, textBox, button, wrap, font, input, hit, inside, save, fmt, dim, rrect, keyHit, ui, audio } from './core.js';
 
 export const nav = {}; // main.js가 화면 이동 함수를 채워 넣음
 
@@ -114,4 +114,74 @@ export function iconButton(im, label, x, y, w, h, opts = {}) {
   }
   if (hov) ui.cursor = 'pointer';
   return hit(x, y, w, h + (label ? 56 : 0), opts.layer || 0);
+}
+
+// 카드 그림 찾기 (생물 사진은 cr_, 나머지는 스프라이트)
+export function cardPicName(pic) {
+  if (!pic) return null;
+  if (/^(Bird|Fish|Flower|GangChi)/.test(pic)) return 'cr_' + pic;
+  return 'sp/' + pic;
+}
+const FRAME_IMG = { Panel: 'card_normal', NormalCard: 'card_normal', RareCard: 'card_rare', UniqueCard: 'card_unique' };
+
+// 카드 뽑기 연출: 뒷면 카드가 흔들리다가, 누르면 뒤집히면서 무슨 카드인지 나옴
+export class CardReveal {
+  constructor() { this.item = null; }
+  show(item) { this.item = { ...item, phase: 'closed', t: 0 }; }   // {pic, frame, name, kind, extra, onClose}
+  get open() { return !!this.item; }
+  update(dt) { if (this.item) this.item.t += dt; }
+  draw(layer) {
+    const it = this.item;
+    if (!it) return;
+    dim(0.8);
+    const cx = W / 2, cy = 300, cw = 300, ch = 300;
+    const t = it.t;
+    if (it.phase === 'closed') {
+      // 뒷면: 살짝 흔들리며 빛남
+      const wob = Math.sin(t * 9) * 0.05 * (1 + Math.sin(t * 2));
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(wob);
+      const glow = 0.35 + 0.25 * Math.sin(t * 4);
+      ctx.shadowColor = `rgba(255,230,120,${glow})`; ctx.shadowBlur = 40;
+      drawFit(img('cardback'), -cw / 2, -ch / 2, cw, ch);
+      ctx.restore();
+      text(`${it.kind || '카드'}를 얻었다!`, cx, 470, { size: 40, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
+      if (Math.floor(t * 2) % 2 === 0) text('카드를 눌러서 열어 보세요!', cx, 530, { size: 30, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
+      if (hit(cx - cw / 2, cy - ch / 2, cw, ch, layer) || hit(0, 0, W, H, layer) || keyHit('Enter', 'Space')) {
+        it.phase = 'flip'; it.t = 0; audio.sfx('flip');
+      }
+      return;
+    }
+    // 뒤집기 (0.5초) → 앞면 공개
+    const f = it.phase === 'flip' ? Math.min(1, t / 0.5) : 1;
+    if (it.phase === 'flip' && f >= 1) { it.phase = 'open'; it.t = 0; audio.sfx('reveal'); }
+    const front = f >= 0.5;
+    const sx = Math.max(0.02, Math.abs(Math.cos(f * Math.PI)));
+    // 앞면이 나오면 뒤에서 빛줄기가 돎
+    if (it.phase === 'open') {
+      const a = Math.min(1, t * 3);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.6); ctx.globalAlpha = 0.5 * a;
+      ctx.fillStyle = '#ffe9a0';
+      for (let k = 0; k < 12; k++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-40, -330); ctx.lineTo(40, -330); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+    }
+    const pop = it.phase === 'open' ? 1 + 0.12 * Math.max(0, 1 - t * 4) : 1;
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(sx * pop, pop);
+    if (!front) drawFit(img('cardback'), -cw / 2, -ch / 2, cw, ch);
+    else {
+      drawFit(img(FRAME_IMG[it.frame] || 'card_normal'), -cw / 2, -ch / 2, cw, ch);
+      drawFit(img(cardPicName(it.pic)), -cw * 0.3, -ch * 0.32, cw * 0.6, ch * 0.6);
+    }
+    ctx.restore();
+    if (it.phase !== 'open') return;
+    // 카드 아래에 이름과 받은 것 (카드와 겹치지 않게)
+    const a = Math.min(1, t * 2.5);
+    ctx.save(); ctx.globalAlpha = a;
+    panel(cx - 300, 470, 600, it.extra ? 150 : 100, { r: 14 });
+    text(it.name || '', cx, 486, { size: 40, align: 'center', color: '#c0392b' });
+    if (it.extra) text(it.extra, cx, 548, { size: 28, align: 'center', color: '#5a4a3a' });
+    ctx.restore();
+    if (t > 0.25 && (button('확인', cx - 100, H - 84, 200, 64, { layer, size: 30 }) || keyHit('Enter', 'Space'))) {
+      const done = it.onClose; this.item = null; done?.();
+    }
+  }
 }
