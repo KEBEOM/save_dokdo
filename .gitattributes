@@ -1,0 +1,24 @@
+# 줄바꿈을 저장소 안에서 한 가지로 맞춤
+* text=auto
+
+# Unity 장면·프리팹 등은 텍스트(YAML)지만 줄바꿈을 건드리지 않음
+*.unity    -text
+*.prefab   -text
+*.asset    -text
+*.mat      -text
+*.anim     -text
+*.controller -text
+*.meta     -text
+
+# 바이너리 파일
+*.png   binary
+*.jpg   binary
+*.mp3   binary
+*.wav   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.db    binary
+*.unityweb binary
+*.wasm  binary
+*.data  binary
