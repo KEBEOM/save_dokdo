@@ -3,9 +3,9 @@ import { W, H, ctx, img, drawCover, drawFit, panel, text, textBox, button, hit, 
 import { nav, drawPoints, Notice } from './widgets.js';
 
 const MODES = [
-  { name: '이지모드', key: 'easy', pairs: 4, rows: 2, cols: 4, mult: 1, cards: ['GrassCard1', 'GrassCard2', 'GrassCard3', 'GrassCard4'], need: 0 },
-  { name: '노멀모드', key: 'normal', pairs: 6, rows: 3, cols: 4, mult: 10, cards: [1, 2, 3, 4, 5, 6].map(i => 'SkyCard' + i), need: 1 },
-  { name: '하드모드', key: 'hard', pairs: 9, rows: 3, cols: 6, mult: 100, cards: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => 'OceanCard' + i), need: 3 },
+  { name: '이지모드', key: 'easy', pairs: 4, rows: 2, cols: 4, mult: 2, cards: ['GrassCard1', 'GrassCard2', 'GrassCard3', 'GrassCard4'], need: 0 },
+  { name: '노멀모드', key: 'normal', pairs: 6, rows: 3, cols: 4, mult: 5, cards: [1, 2, 3, 4, 5, 6].map(i => 'SkyCard' + i), need: 1 },
+  { name: '하드모드', key: 'hard', pairs: 9, rows: 3, cols: 6, mult: 10, cards: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => 'OceanCard' + i), need: 3 },
 ];
 const heroCount = () => save.heroMem.filter(Boolean).length;
 
@@ -25,14 +25,14 @@ export class CardModeScene {
         if (locked) this.notice.push(`${m.name}는 독도퍼즐을 ${m.need}개이상 열어야 잠금해제 됩니다.\n\n<독도퍼즐 여는 방법>\n1. 메인화면의 독도석상 클릭!\n2. 영웅퍼즐로 들어가서 구입!`, { title: '<게임 잠김>', image: 'statue', h: 520 });
         else go(nav.cardGame(m));
       }
-      text(`× ${m.mult}점`, 670, y + 34, { size: 30, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+      text(`짝 하나에 ${m.mult}점`, 670, y + 34, { size: 30, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
       if (locked) drawFit(img('Lock'), 50, y + 20, 60, 60);
     });
     panel(860, 60, 380, 200, { fill: 'rgba(250,240,220,.95)' });
     text('획득한 점수:', 890, 86, { size: 28 }); text(fmt(save.lastCardScore || 0), 1210, 86, { size: 28, align: 'right' });
-    text('카드 점수 합계:', 890, 140, { size: 28 }); text(fmt(save.hearts), 1210, 140, { size: 28, align: 'right' });
-    drawFit(img('heart'), 890, 190, 50, 50);
-    textBox('카드 점수로 독도 석상의 영웅 퍼즐을 열 수 있어요', 950, 186, 270, 60, { size: 20, align: 'left' });
+    text('독도 포인트:', 890, 140, { size: 28 }); text(fmt(save.dp), 1210, 140, { size: 28, align: 'right' });
+    drawFit(img('dp'), 890, 190, 50, 50);
+    textBox('독도 포인트로 독도 석상의 영웅 퍼즐을 열 수 있어요', 950, 186, 270, 60, { size: 20, align: 'left' });
     if (button('메인화면으로', W - 330, H - 120, 290, 80, { size: 30 })) go(nav.select());
     this.notice.draw(1);
   }
@@ -65,7 +65,7 @@ export class CardGameScene {
     if (this.phase === 'end') return;
     this.phase = 'end'; this.win = win;
     this.score = this.pairs * this.m.mult;
-    save.hearts += this.score; save.lastCardScore = this.score; persist();
+    save.dp += this.score; save.lastCardScore = this.score; persist();
     audio.sfx(win ? 'good' : 'bad');
   }
   pick(c) {
@@ -108,9 +108,9 @@ export class CardGameScene {
       panel(W / 2 - 330, 120, 660, 470);
       text(this.win ? 'GAME CLEAR' : 'GAME OVER', W / 2, 160, { size: 72, align: 'center', color: this.win ? '#3d7a2a' : '#a33' });
       text(`맞힌 짝: ${this.pairs} / ${this.m.pairs}`, W / 2, 270, { size: 34, align: 'center' });
-      drawFit(img('heart'), W / 2 - 170, 330, 70, 70);
-      text(`카드 점수 + ${fmt(this.score)}`, W / 2 - 80, 345, { size: 40 });
-      text(`합계: ${fmt(save.hearts)}`, W / 2, 420, { size: 30, align: 'center', color: '#5a4a3a' });
+      drawFit(img('dp'), W / 2 - 170, 330, 70, 70);
+      text(`독도 포인트 + ${fmt(this.score)}`, W / 2 - 80, 345, { size: 40 });
+      text(`합계: ${fmt(save.dp)}`, W / 2, 420, { size: 30, align: 'center', color: '#5a4a3a' });
       if (button('다시 하기', W / 2 - 300, 490, 280, 76, { layer: 1, size: 30 })) go(nav.cardGame(this.m));
       if (button('메뉴로 나가기', W / 2 + 20, 490, 280, 76, { layer: 1, size: 30 })) go(nav.cardMode());
     } else if (button('그만하기', W - 200, H - 80, 170, 60, { size: 26 })) go(nav.cardMode());

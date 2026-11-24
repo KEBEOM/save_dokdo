@@ -4,9 +4,11 @@ import { nav, drawPoints, Notice, Reader, iconButton } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이편', '화산섬의 탄생순서', '독도와 울릉도의 거리편', '독도의 지하자원', '독도의 이름편 -1-', '독도의 이름편 -2-', '독도와 지도편', '독도의 역사편 -1-', '독도의 역사편 -2-', '독도와 일본편'];
 export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', '안용복편', '홍순칠편', '누군가가 고의로 버린 문서'];
-const HERO_COST = [20, 120, 240, 1800, 3600];
+const HERO_COST = [30, 50, 80, 120, 150];
 const HERO_PIC = [['hero_lee', ''], ['hero_leegyu', '이걸.. 찾았다네'], ['hero_ahn', ''], ['hero_hong', ''], ['hero_leegyu', '이걸.. 찾았다네']];
-export const spiritMemCost = i => (i === 8 ? 120 : 20);
+export const spiritMemCost = () => 20;
+export const spiritShowCost = i => 10 * (i + 1);   // 마을에 정령 불러내기
+export const cardPrice = buys => 30 + 10 * buys;    // 캐릭터·생물 카드 (점점 비싸짐)
 const SPIRIT_FRAMES = [0, 0, 1, 2, 7, 5, 4, 6, 3, 8];
 // 그림이 오른쪽을 보고 있는 정령 (독도 강치, 괭이갈매기). 나머지는 왼쪽을 봄
 const FACES_RIGHT = new Set([6, 7]); // 정령 그림 (spirits 시트 칸 번호, 1번은 물의 정령 시트)
@@ -79,7 +81,7 @@ export class HubScene {
     beginUI(this.layer);
     drawCover(img('forest'), 0, 0, W, H);
     ctx.fillStyle = 'rgba(255,240,200,.08)'; ctx.fillRect(0, 0, W, H);
-    drawPoints(20, 20, ['dp', 'hearts', 'savePts'], { w: 220 });
+    drawPoints(20, 20, ['dp'], { w: 220 });
 
     // 독도 석상
     if (iconButton(img('statue'), '독도 석상', 530, 180, 220, 220, { layer: 0 })) this.panel = 'memories';
@@ -146,8 +148,8 @@ export class HubScene {
       if (button('살펴보기', x + 150, 500, 200, 54, { layer: L, size: 26 })) onClick();
     };
     box(130, '정령들과의 추억', '독도에 있으면서 귀여운 정령들을 많이 만났다.\n어디한번 정령들과의 추억을 살펴볼까?', '독도 포인트를 사용하는 곳입니다.\n달리고 구하고 풀어라! 게임으로 추억을 얻어요.', 'spirits', [0, 0, 160, 160], () => { this.panel = 'spiritMem'; });
-    box(650, '영웅들과의 추억', '독도에서 모르고 있었던 영웅들을 알게되었다.\n영웅들의 사진들을 다시한번 살펴볼까?', '카드 점수를 사용하는 곳입니다.\n생물 카드 뒤집기 게임으로 추억을 얻어요.', 'hero_lee', null, () => { this.panel = 'heroMem'; });
-    drawPoints(130, 580, ['dp', 'hearts'], { vertical: false, w: 200 });
+    box(650, '영웅들과의 추억', '독도에서 모르고 있었던 영웅들을 알게되었다.\n영웅들의 사진들을 다시한번 살펴볼까?', '독도 포인트를 사용하는 곳입니다.\n생물 카드 뒤집기 게임으로도 포인트를 모아요.', 'hero_lee', null, () => { this.panel = 'heroMem'; });
+    drawPoints(130, 580, ['dp'], { w: 220 });
     if (button('닫기', W - 260, H - 130, 150, 56, { layer: L })) this.panel = null;
   }
   memGrid(kind) {
@@ -156,7 +158,7 @@ export class HubScene {
     const n = isSpirit ? 10 : 5;
     panel(60, 40, W - 120, H - 80);
     text(isSpirit ? '정령들과의 추억' : '영웅들과의 추억', 100, 62, { size: 38, color: '#7a3b12' });
-    drawPoints(560, 56, isSpirit ? ['dp'] : ['hearts'], { w: 200 });
+    drawPoints(560, 56, ['dp'], { w: 200 });
     const cols = isSpirit ? 5 : 5, cw = 210, ch = isSpirit ? 250 : 400, gx = 14;
     const x0 = (W - (cols * cw + (cols - 1) * gx)) / 2, y0 = 130;
     for (let i = 0; i < n; i++) {
@@ -168,12 +170,12 @@ export class HubScene {
       text(`${i + 1}번 퍼즐`, cx + cw / 2, cy + ch - 86, { size: 22, align: 'center', color: '#7a3b12' });
       textBox(isSpirit ? SPIRIT_TITLES[i] : HERO_TITLES[i], cx + 6, cy + ch - 62, cw - 12, 30, { size: 22 });
       if (!opened) {
-        const need = isSpirit ? `${spiritMemCost(i)} 독도 포인트` : `${fmt(HERO_COST[i])} 카드 점수`;
+        const need = isSpirit ? `${spiritMemCost(i)} 독도 포인트` : `${fmt(HERO_COST[i])} 독도 포인트`;
         text(isSpirit && !save.cleared[i] ? `${i + 1}스테이지를 깨면 열려요` : need, cx + cw / 2, cy + ch - 30, { size: 18, align: 'center', color: '#5a4a3a' });
       }
       if (hit(cx, cy, cw, ch, L)) this.openMem(kind, i);
     }
-    textBox(isSpirit ? '달리고 구하고 풀어라! 에서 스테이지를 깨면 정령 퍼즐을 열 수 있어요.' : '게임 난이도가 높을 수록 높은 카드 점수를 받을 수 있습니다.\n영웅 퍼즐을 1개 열면 노멀모드, 3개 열면 하드모드가 열려요.', 90, H - 140, W - 420, 80, { size: 22, align: 'left', color: '#5a4a3a' });
+    textBox(isSpirit ? '달리고 구하고 풀어라! 에서 스테이지를 깨면 정령 퍼즐을 열 수 있어요.' : '카드 뒤집기는 난이도가 높을 수록 독도 포인트를 많이 받아요.\n영웅 퍼즐을 1개 열면 노멀모드, 3개 열면 하드모드가 열려요.', 90, H - 140, W - 420, 80, { size: 22, align: 'left', color: '#5a4a3a' });
     if (button('뒤로가기', W - 290, H - 128, 190, 60, { layer: L })) this.panel = 'memories';
   }
   draw_spiritMem() { this.memGrid('spirit'); }
@@ -200,10 +202,10 @@ export class HubScene {
         this.reader.show({ title: `영웅들과의 추억 ${i + 1} · ${HERO_TITLES[i]}`, text: d.heroTexts[i], image: pic, caption: cap });
       } else {
         const cost = HERO_COST[i];
-        if (save.hearts < cost) this.notice.push(`${i + 1}번 퍼즐은 카드 점수가 ${fmt(cost)}점 필요합니다.\n게임 난이도가 높을 수록 높은 점수를 받을 수 있습니다.`, { face: 'heart' });
-        else this.notice.push(`퍼즐을 ${fmt(cost)}점 사용하여 열람하겠습니까?\n(카드 점수 사용)`, {
-          buttons: ['열람하기', '취소'], face: 'heart',
-          onClose: k => { if (k === 0) { save.hearts -= cost; save.heroMem[i] = true; persist(); audio.sfx('buy'); this.openMem('hero', i); } },
+        if (save.dp < cost) this.notice.push(`${i + 1}번 퍼즐은 독도 포인트가 ${fmt(cost)}점 필요합니다.\n게임 난이도가 높을 수록 높은 점수를 받을 수 있습니다.`, { face: 'dp' });
+        else this.notice.push(`퍼즐을 ${fmt(cost)}점 사용하여 열람하겠습니까?\n(독도 포인트 사용)`, {
+          buttons: ['열람하기', '취소'], face: 'dp',
+          onClose: k => { if (k === 0) { save.dp -= cost; save.heroMem[i] = true; persist(); audio.sfx('buy'); this.openMem('hero', i); } },
         });
       }
     }
@@ -227,9 +229,8 @@ export class HubScene {
       panel(490, 520, 300, 70, { fill: '#c8e6b0' });
       text('구출 성공!', 640, 538, { size: 32, align: 'center' });
     } else {
-      const c1 = d.spiritCostDP[i], c2 = d.spiritCostSave[i];
-      if (button(`${fmt(c1)}`, 340, 520, 280, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
-      if (button(`${fmt(c2)}`, 660, 520, 280, 70, { layer: L, icon: img('savept'), size: 30 })) this.buySpirit(i, 'savePts', c2);
+      const c1 = spiritShowCost(i);
+      if (button(`${fmt(c1)} 포인트로 구출`, 440, 520, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
     }
     if (button('◀', 260, 230, 70, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
     if (button('▶', 950, 230, 70, 90, { layer: L, size: 34 }) || (keyHit('ArrowRight') && L === ui.top)) this.page = (i + 1) % 10;
@@ -256,12 +257,12 @@ export class HubScene {
     const isChar = kind === 'character';
     const cards = isChar ? d.characterCards : d.creatureCards;
     const owned = isChar ? save.character : save.creature;
-    const price = 100 * ((isChar ? save.characterBuys : save.creatureBuys) + 1);
-    const cur = isChar ? 'dp' : 'hearts';
+    const price = cardPrice(isChar ? save.characterBuys : save.creatureBuys);
+    const cur = 'dp';
     panel(60, 30, W - 120, H - 60);
     text(isChar ? '독도 캐릭터 카드' : '독도 생물 카드', 100, 50, { size: 38, color: '#7a3b12' });
     panel(470, 46, 260, 54, { r: 8, inner: false });
-    drawFit(img(isChar ? 'dp' : 'heart'), 478, 50, 46, 46);
+    drawFit(img('dp'), 478, 50, 46, 46);
     text(`다음 카드 ${fmt(price)}`, 720, 58, { size: 24, align: 'right' });
     drawPoints(760, 46, [cur], { w: 200 });
     const cols = isChar ? 5 : 8, cw = isChar ? 180 : 128, ch = isChar ? 200 : 150, gx = isChar ? 30 : 12, gy = isChar ? 24 : 12;
@@ -275,7 +276,7 @@ export class HubScene {
       text(owned[i] ? (isChar ? c.title.split(' [')[0] : c.quote) : String(i + 1), cx + cw / 2, cy + ch - 24, { size: isChar ? 20 : 18, align: 'center' });
       if (hit(cx, cy, cw, ch, L)) {
         if (owned[i]) this.reader.show({ title: isChar ? c.title : `${c.quote} · ${c.title}`, text: (isChar ? c.quote + '\n\n' : '') + c.desc, image: cardPicName(c.pic) });
-        else if (save[cur] < price) this.notice.push(`${isChar ? '독도 포인트' : '카드 점수'}가 ${fmt(price)}점 필요해요.\n${isChar ? '' : '파란 로봇의 퀴즈를 풀어도 생물 카드를 얻을 수 있어요!'}`, { face: isChar ? 'dp' : 'heart' });
+        else if (save[cur] < price) this.notice.push(`독도 포인트가 ${fmt(price)}점 필요해요.\n${isChar ? '' : '파란 로봇의 퀴즈를 풀어도 생물 카드를 얻을 수 있어요!'}`, { face: 'dp' });
         else this.notice.push(`${i + 1}번 카드를 ${fmt(price)}점에 살까요?\n(카드의 가격은 점점 비싸져요)`, {
           buttons: ['사기', '취소'],
           onClose: k => {
@@ -288,7 +289,7 @@ export class HubScene {
       }
     });
     textBox(isChar ? '열리지 않은 카드를 클릭하면 독도 포인트로 카드를 살 수 있어요. 독도 캐릭터에 대한 정보들을 알 수 있어요!'
-      : '게임을 진행하며 만나는 파란 로봇의 퀴즈를 풀면 카드를 얻을 수 있어요! 카드 점수로 살 수도 있어요.', 100, H - 110, W - 400, 60, { size: 21, align: 'left', color: '#5a4a3a' });
+      : '게임을 진행하며 만나는 파란 로봇의 퀴즈를 풀면 카드를 얻을 수 있어요! 독도 포인트로 살 수도 있어요.', 100, H - 110, W - 400, 60, { size: 21, align: 'left', color: '#5a4a3a' });
     if (button('닫기', W - 260, H - 110, 150, 56, { layer: L })) this.panel = null;
   }
   draw_character() { this.cardPanel('character'); }
@@ -302,7 +303,7 @@ export class HubScene {
     text('독도 아저씨의 도움말', 360, 70, { size: 38, color: '#7a3b12' });
     const lines = [
       ['독도 구출하러 가기', '생물 카드 뒤집기, 달리고 구하고 풀어라!, 독도를 건 마지막 승부를 할 수 있어요.'],
-      ['독도 석상', '퍼즐을 열고 독도에 대하여 알아봅시다. 정령 퍼즐은 독도 포인트, 영웅 퍼즐은 카드 점수로 열어요.'],
+      ['독도 석상', '퍼즐을 열고 독도에 대하여 알아봅시다. 정령 퍼즐과 영웅 퍼즐 모두 독도 포인트로 열어요.'],
       ['정령 구출하기', '포인트로 정령들을 마을에 불러낼 수 있어요. 정령을 누르면 이야기를 들려줘요.'],
       ['독도 캐릭터 카드', '독도 캐릭터들에 대한 정보를 알 수 있습니다.'],
       ['독도 생물 카드', '독도에 살고있는 생물들에 대한 정보를 얻을 수 있습니다.'],

@@ -46,7 +46,7 @@ export class StageSelectScene {
       drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160);
       ctx.restore();
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
-      if (save.rescued[i]) drawFit(img('savept'), x + 120, y - 6, 44, 44);
+      if (save.rescued[i]) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
       panel(x + 20, y + 168, 120, 46, { r: 8, inner: false, lw: 3 });
       text(`스테이지${i + 1}`, x + 80, y + 176, { size: 24, align: 'center' });
       if (hit(x, y, 160, 214, 0)) {
@@ -203,7 +203,7 @@ export class StageScene {
     if (s && !s.got) {
       const info = spriteInfo(s.s); const half = info ? Math.max(info.w * Math.abs(s.sx), 0.8) / 2 : 0.6;
       if (Math.abs(s.x - p.x) < half + 0.2 && Math.abs(s.y - p.y) < half + 0.3) {
-        s.got = true; save.rescued[this.n - 1] = true; save.savePts += 2 ** (this.n - 1); persist();
+        s.got = true; save.rescued[this.n - 1] = true; save.dp += 10; persist();
         audio.sfx('good'); this.modal = { type: 'save' };
       }
     }
@@ -397,7 +397,6 @@ export class StageScene {
     panel(14, 12, 190, 52, { r: 8, inner: false });
     text(`스테이지${this.n}`, 109, 20, { size: 30, align: 'center' });
     panel(214, 12, 170, 52, { r: 8, inner: false }); drawFit(img('dp'), 220, 16, 44, 44); text(fmt(save.dp), 372, 22, { size: 28, align: 'right' });
-    panel(394, 12, 150, 52, { r: 8, inner: false }); drawFit(img('savept'), 400, 16, 44, 44); text(fmt(save.savePts), 532, 22, { size: 28, align: 'right' });
     // 열쇠 3개 + 정령
     for (let k = 1; k <= 3; k++) {
       const key = this.keys.find(q => q.n === k), got = key && key.got;
@@ -468,7 +467,7 @@ export class StageScene {
       if (bg) drawFit(bg, 160, 80, W - 320, 470);
       panel(W / 2 - 260, 560, 520, 76, {});
       textBox(d.saveText, W / 2 - 240, 566, 480, 64, { size: 30 });
-      text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!  구출 포인트 +${fmt(2 ** (this.n - 1))}`, W / 2, 100, { size: 30, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+      text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!  독도 포인트 +10`, W / 2, 100, { size: 30, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
       if (button('확인', W - 330, 570, 160, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'guide') {
       panel(100, 50, W - 200, H - 100);

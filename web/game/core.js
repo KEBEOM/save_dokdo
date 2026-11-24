@@ -96,7 +96,12 @@ export let save = loadSave();
 function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return Object.assign(defaultSave(), JSON.parse(raw));
+    if (raw) {
+      const s = Object.assign(defaultSave(), JSON.parse(raw));
+      // 화폐를 독도 포인트 하나로 통일: 예전 카드 점수(÷10)와 구출 포인트를 옮겨 담음
+      if (s.hearts || s.savePts) { s.dp += Math.floor((s.hearts || 0) / 10) + (s.savePts || 0); s.hearts = 0; s.savePts = 0; }
+      return s;
+    }
   } catch (_) {}
   return defaultSave();
 }

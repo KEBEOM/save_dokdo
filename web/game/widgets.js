@@ -5,7 +5,7 @@ export const nav = {}; // main.js가 화면 이동 함수를 채워 넣음
 
 // 화면 위쪽 포인트 표시 (부드럽게 숫자가 바뀜)
 const shown = { dp: null, hearts: null, savePts: null };
-export function drawPoints(x, y, which = ['dp', 'hearts', 'savePts'], opts = {}) {
+export function drawPoints(x, y, which = ['dp'], opts = {}) {
   const icons = { dp: 'dp', hearts: 'heart', savePts: 'savept' };
   const labels = { dp: '독도 포인트', hearts: '카드 점수', savePts: '구출 포인트' };
   const w = opts.w || 230;
