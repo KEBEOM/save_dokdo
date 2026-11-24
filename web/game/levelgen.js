@@ -201,6 +201,9 @@ export function generateLevel(orig, n) {
     const p = roomy[k]; used.add(p);
     robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n, plat: p });
   }
+  // 4) 빨간 로봇 몇 마리는 돌을 던지는 초록 로봇으로 (2스테이지부터, 넓은 발판 위)
+  const greenCount = n >= 2 ? 1 + Math.floor(n / 3) : 0;
+  robots.filter(r => r.walk).sort((a, b) => b.plat.w - a.plat.w).slice(0, greenCount).forEach(r => { r.green = true; r.speed = 0.9 + 0.08 * n; });
 
   const doorX = end.x0 + 3, flagX = end.x0 + end.w - 2;
   const door = { ...orig.door, x: doorX, y: end.top + 0.93, box: [doorX - 0.566, end.top, 1.132, 80] };

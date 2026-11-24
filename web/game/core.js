@@ -319,6 +319,8 @@ export const audio = {
       case 'hurt': tone(300, 0.2, 'square', 0.06, 0, -200); break;
       case 'flip': tone(520, 0.05, 'triangle', 0.06); break;
       case 'reveal': [784, 988, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.18, 'triangle', 0.07, i * 0.06)); tone(2093, 0.4, 'sine', 0.05, 0.32); break;
+      case 'throw': tone(240, 0.12, 'triangle', 0.06, 0, 260); break;
+      case 'thud': tone(140, 0.08, 'square', 0.04, 0, -60); break;
       case 'buy': [659, 880, 1318].forEach((f, i) => tone(f, 0.1, 'square', 0.05, i * 0.06)); break;
     }
   },

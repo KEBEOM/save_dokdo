@@ -16,7 +16,7 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 돌을 던진다! 돌에 맞아도 처음 장소로 돌아간다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 function mix(a, b, f) {
   const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
@@ -84,7 +84,14 @@ export class StageScene {
     this.start = [d.start[0], d.start[1] + 0.2];
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
-    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, jt: 0.5 + Math.random() * 1.5, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
+    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, jt: 0.5 + Math.random() * 1.5, solved: false, tt: 1.5 + Math.random() * 2 }));
+    this.stones = [];
+    this.look = 0;     // 아래 내려다보기 (0~1)
+    // 날씨: 1스테이지는 맑음, 그 뒤로는 들어올 때마다 맑음·비·눈 중 하나
+    const wr = Math.random();
+    this.weather = n === 1 ? 'clear' : wr < 0.4 ? 'clear' : wr < 0.7 ? 'rain' : 'snow';
+    this.drops = Array.from({ length: this.weather === 'rain' ? 170 : this.weather === 'snow' ? 130 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 0.8, ph: Math.random() * 6.3 }));
+    this.splash = [];
     // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
     for (const rb of this.robots) {
       const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
@@ -116,7 +123,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'stagebg'])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'stagebg'])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -180,6 +187,8 @@ export class StageScene {
     const left = keyDown('ArrowLeft', 'KeyA') || this.touch.left;
     const right = keyDown('ArrowRight', 'KeyD') || this.touch.right;
     const jumpHit = keyHit('Space', 'ArrowUp', 'KeyW') || this.touch.jumpHit;
+    const lookDown = keyDown('ArrowDown', 'KeyS') || this.touch.down;
+    this.look += ((lookDown ? 1 : 0) - this.look) * Math.min(1, dt * (lookDown ? 3 : 6));
     p.vx = (right ? 1 : 0) - (left ? 1 : 0);
     if (p.vx) p.face = p.vx;
     p.vx *= SPEED;
@@ -219,7 +228,20 @@ export class StageScene {
         }
       }
       if (rb.hop > 0) rb.hop -= dt;
-      if (rb.walk) {
+      // 초록 로봇: 주인공이 가까우면 멈춰서 돌을 던짐
+      if (rb.green && !(rb.appear > 0)) {
+        const dx = p.x - rb.x, dy = p.y - rb.y;
+        if (rb.wind > 0) {
+          rb.wind -= dt; rb.look = Math.sign(dx) || 1;
+          if (rb.wind <= 0) { this.throwStone(rb); rb.vx = rb.saveVx; }
+        } else {
+          rb.tt -= dt;
+          if (rb.tt <= 0 && Math.abs(dx) < 11 && Math.abs(dy) < 7 && p.blink <= 0) {
+            rb.wind = 0.45; rb.saveVx = rb.vx || rb.saveVx; rb.vx = 0; rb.tt = Math.max(1.1, 2.6 - 0.12 * this.n) + Math.random() * 1.2;
+          }
+        }
+      }
+      if (rb.walk && rb.vx) {
         // 벽에 부딪히거나 발밑이 비면 돌아서기
         const ahead = { x: rb.x + Math.sign(rb.vx) * (ROBOT_R + 0.05) - 0.05, y: rb.y - ROBOT_R - 0.2, w: 0.1, h: 0.15 };
         if (res.hitX || (res.landed && !this.collide(ahead, this.solids))) rb.vx = -rb.vx;
@@ -234,6 +256,14 @@ export class StageScene {
         this.respawn();
       }
     }
+    // 초록 로봇이 던진 돌
+    for (const st of this.stones) {
+      st.t += dt; st.vy -= GRAV * 0.55 * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.rot += st.vx * dt * 3;
+      const b = { x: st.x - 0.16, y: st.y - 0.16, w: 0.32, h: 0.32 };
+      if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud'); this.splash.push({ x: st.x, y: st.y, t: 0.3, stone: true }); } continue; }
+      if (p.blink <= 0 && Math.abs(st.x - p.x) < 0.38 && Math.abs(st.y - (p.y - 0.07)) < 0.45) { st.dead = true; audio.sfx('hurt'); this.respawn(); }
+    }
+    this.stones = this.stones.filter(s => !s.dead);
     // 독도 포인트
     for (const c of this.coins) {
       if (!c.got && Math.abs(c.x - p.x) < 0.55 && Math.abs(c.y - (p.y - 0.08)) < 0.6) { c.got = true; save.dp += 3; persist(); audio.sfx('coin'); }
@@ -259,7 +289,7 @@ export class StageScene {
     // 카메라
     const vw = W / U, vh = H / U;
     this.cam.x += (p.x - this.cam.x) * Math.min(1, dt * 8);
-    this.cam.y += (p.y + 1 - this.cam.y) * Math.min(1, dt * 8);
+    this.cam.y += (p.y + 1 - 6 * this.look - this.cam.y) * Math.min(1, dt * 8);   // ↓를 누르면 6칸 아래까지
     const minX = this.bounds.l - 2 + vw / 2, maxX = this.bounds.r + 2 - vw / 2;
     this.cam.x = minX > maxX ? (minX + maxX) / 2 : clamp(this.cam.x, minX, maxX);
     const minY = this.bounds.b - 3 + vh / 2, maxY = this.bounds.t + 2 - vh / 2;
@@ -267,15 +297,25 @@ export class StageScene {
   }
   readTouch() {
     // 화면 아래 이동 버튼 (여러 손가락 동시 터치)
-    this.touch.left = this.touch.right = false;
+    this.touch.left = this.touch.right = this.touch.down = false;
     let jumpNow = false;
     if (!this.busy) for (const pt of input.pointers.values()) {
       if (inside(pt.x, pt.y, 20, H - 160, 140, 140)) this.touch.left = true;
       if (inside(pt.x, pt.y, 170, H - 160, 140, 140)) this.touch.right = true;
       if (inside(pt.x, pt.y, W - 190, H - 170, 170, 150)) jumpNow = true;
+      if (inside(pt.x, pt.y, W - 160, H - 300, 110, 110)) this.touch.down = true;
     }
     this.touch.jumpHit = jumpNow && !this.touch.jumpHeld;
     this.touch.jumpHeld = jumpNow;
+  }
+  throwStone(rb) {
+    const p = this.p, g = GRAV * 0.55;
+    const tx = p.x + (Math.random() - 0.5) * 1.2 + p.vx * 0.25, ty = p.y + (Math.random() - 0.5) * 0.6;
+    const sx = rb.x + rb.look * 0.3, sy = rb.y + 0.45;
+    const dx = tx - sx, dy = ty - sy;
+    const T = clamp(Math.abs(dx) / 7, 0.55, 1.3);
+    this.stones.push({ x: sx, y: sy, vx: dx / T, vy: (dy + 0.5 * g * T * T) / T, t: 0, rot: 0 });
+    audio.sfx('throw');
   }
   respawn() {
     const p = this.p;
@@ -392,7 +432,9 @@ export class StageScene {
       const blue = rb.blue;
       const fr = Math.floor(rb.t * (rb.walk ? 8 : 5)) % 8;
       const frame = blue ? [fr * 81, 0, 80, 80] : [fr * 80, 0, 80, 80];
-      this.drawSheet(blue ? 'robo_blue' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, rb.vx > 0, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      const facingRight = rb.wind > 0 ? rb.look > 0 : rb.vx > 0;
+      if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); ctx.fillStyle = '#7d7468'; ctx.beginPath(); ctx.arc(wx, wy, 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#3a2f28'; ctx.lineWidth = 3; ctx.stroke(); }
+      this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
       if (rb.q && !rb.solved) {
         const [px, py] = this.w2s(rb.x, rb.y + 0.9);
         if (px > -50 && px < W + 50) text('?', px, py - 16, { size: 28, align: 'center', color: '#3b8ede', stroke: '#fff', strokeW: 5 });
@@ -411,7 +453,15 @@ export class StageScene {
       else if (Math.abs(p.vx) > 0.1) { sheet = 'boy_walk'; fr = Math.floor(p.anim * 10) % 4; }
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x, p.y, 0.8 * 1.25, p.face < 0);
     }
+    for (const st of this.stones) {
+      const [sx, sy] = this.w2s(st.x, st.y);
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(st.rot);
+      ctx.fillStyle = '#8a8076'; ctx.strokeStyle = '#2b2b2b'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-4, -10); ctx.lineTo(8, -8); ctx.lineTo(11, 3); ctx.lineTo(3, 10); ctx.lineTo(-9, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
     if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ffc4a0', dd * 0.7); ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    this.drawWeather();
     if (!this.ready) {
       ctx.fillStyle = 'rgba(27,43,54,.85)'; ctx.fillRect(0, 0, W, H);
       text(`스테이지${this.n}`, W / 2, H / 2 - 70, { size: 60, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
@@ -422,6 +472,48 @@ export class StageScene {
     this.drawMinimap();
     if (this.modal) this.drawModal();
     this.notice.draw(2);
+  }
+  // 비·눈: 화면 위에 그리는 알갱이 (카메라가 움직이면 같이 밀림)
+  drawWeather() {
+    const dt = 1 / 60, wx = this.weather;
+    const camDx = (this.cam.x - (this.lastCam?.x ?? this.cam.x)) * U, camDy = (this.cam.y - (this.lastCam?.y ?? this.cam.y)) * U;
+    this.lastCam = { x: this.cam.x, y: this.cam.y };
+    for (const s of this.splash) s.t -= dt;
+    this.splash = this.splash.filter(s => s.t > 0);
+    for (const s of this.splash) {
+      const [sx, sy] = this.w2s(s.x, s.y);
+      ctx.strokeStyle = s.stone ? `rgba(90,80,70,${s.t * 3})` : `rgba(220,235,255,${s.t * 3})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(sx, sy, (0.3 - s.t) * 60 + 4, (0.3 - s.t) * 14 + 2, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (wx === 'clear') return;
+    ctx.save();
+    if (wx === 'rain') {
+      ctx.fillStyle = 'rgba(40,60,90,.18)'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(210,225,255,.55)'; ctx.lineWidth = 2; ctx.beginPath();
+      for (const d of this.drops) {
+        if (!this.busy) { d.x += -130 * d.s * dt - camDx; d.y += 900 * d.s * dt + camDy; }
+        if (d.y > H) { d.y -= H + 20; d.x = Math.random() * (W + 200); }
+        if (d.x < -20) d.x += W + 40; else if (d.x > W + 220) d.x -= W + 40;
+        ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + 5 * d.s, d.y - 22 * d.s);
+      }
+      ctx.stroke();
+      // 화면에 보이는 발판 위에 톡톡 튀는 물보라
+      if (!this.busy && Math.random() < 0.5) {
+        const vx0 = this.cam.x - W / U / 2, vx1 = this.cam.x + W / U / 2, vy0 = this.cam.y - H / U / 2, vy1 = this.cam.y + H / U / 2;
+        const t = this.solids[Math.floor(Math.random() * this.solids.length)];
+        if (t && t.x > vx0 && t.x < vx1 && t.y + t.h > vy0 && t.y + t.h < vy1) this.splash.push({ x: t.x + Math.random(), y: t.y + t.h, t: 0.25 });
+      }
+    } else {
+      ctx.fillStyle = 'rgba(230,240,255,.12)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      for (const d of this.drops) {
+        if (!this.busy) { d.ph += dt * 1.5; d.x += Math.sin(d.ph) * 30 * dt - 15 * dt - camDx * 0.9; d.y += 60 * d.s * dt + camDy * 0.9; }
+        if (d.y > H + 10) { d.y -= H + 20; d.x = Math.random() * W; } else if (d.y < -10) d.y += H + 20;
+        if (d.x < -10) d.x += W + 20; else if (d.x > W + 10) d.x -= W + 20;
+        ctx.beginPath(); ctx.arc(d.x, d.y, 2 + 2.5 * d.s, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
   }
   drawMinimap() {
     const x = W - 270, y = 78, w = 250, h = 130;
@@ -439,7 +531,7 @@ export class StageScene {
     ctx.fillStyle = '#e0a800';
     for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
-    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
+    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
     if (this.door) dot(this.door.x, this.door.y, 4, this.door.open ? '#999' : '#8e44ad');
@@ -456,6 +548,7 @@ export class StageScene {
     panel(14, 12, 190, 52, { r: 8, inner: false });
     text(`스테이지${this.n}`, 109, 20, { size: 30, align: 'center' });
     panel(214, 12, 170, 52, { r: 8, inner: false }); drawFit(img('dp'), 220, 16, 44, 44); text(fmt(save.dp), 372, 22, { size: 28, align: 'right' });
+    if (this.weather !== 'clear') { panel(394, 12, 130, 52, { r: 8, inner: false, fill: this.weather === 'rain' ? '#d6e4f0' : '#f4f8ff' }); text(this.weather === 'rain' ? '비 오는 날' : '눈 오는 날', 459, 24, { size: 24, align: 'center', color: '#2b3a4a' }); }
     // 열쇠 3개 + 정령
     for (let k = 1; k <= 3; k++) {
       const key = this.keys.find(q => q.n === k), got = key && key.got;
@@ -479,9 +572,10 @@ export class StageScene {
       panel(20, H - 160, 140, 140, { r: 70, inner: false, fill: this.touch.left ? '#fff' : '#f4e3c3' }); text('◀', 90, H - 118, { size: 56, align: 'center' });
       panel(170, H - 160, 140, 140, { r: 70, inner: false, fill: this.touch.right ? '#fff' : '#f4e3c3' }); text('▶', 240, H - 118, { size: 56, align: 'center' });
       panel(W - 190, H - 170, 170, 150, { r: 75, inner: false, fill: this.touch.jumpHeld ? '#fff' : '#f4e3c3' }); text('점프', W - 105, H - 118, { size: 40, align: 'center' });
+      panel(W - 160, H - 300, 110, 110, { r: 55, inner: false, fill: this.touch.down ? '#fff' : '#f4e3c3' }); text('▼', W - 105, H - 268, { size: 44, align: 'center' });
       ctx.globalAlpha = 1;
     } else {
-      text('←/→ 또는 A/D 이동 · Space/↑ 점프 (공중에서 한 번 더 누르면 더블 점프)', 20, H - 40, { size: 20, color: '#fff', stroke: 'rgba(0,0,0,.55)', strokeW: 4 });
+      text('←/→ 이동 · Space/↑ 점프 (공중에서 한 번 더: 더블 점프) · ↓ 아래 보기', 20, H - 40, { size: 20, color: '#fff', stroke: 'rgba(0,0,0,.55)', strokeW: 4 });
     }
   }
   drawModal() {
@@ -537,15 +631,16 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['down'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
-        const y = 118 + k * 68;
-        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 62);
+        const y = 114 + k * 55;
+        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 51);
         const [n, fr] = icons[k] || [];
-        if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 146, y + 14, 44, 34); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(146, y + 14, 44, 34); }
-        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 140, y + 4, 56, 54); }
-        else if (n) drawFit(img(n), 140, y + 4, 56, 54, { frame: fr });
-        textBox(g, 214, y + 2, W - 360, 58, { size: 22, align: 'left' });
+        if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 9, 40, 32); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 9, 40, 32); }
+        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 143, y + 2, 50, 47); }
+        else if (n === 'down') text('▼', 168, y + 6, { size: 34, align: 'center', color: '#7a3b12' });
+        else if (n) drawFit(img(n), 143, y + 2, 50, 47, { frame: fr });
+        textBox(g, 214, y + 1, W - 360, 49, { size: 21, align: 'left' });
       });
       if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
     } else if (m.type === 'cheat') {
@@ -638,18 +733,19 @@ export class RobotQuizScene {
         if (button(c, 120 + k * 360, 400, 320, 200, { size: 34, fill: '#e8f2ff', hoverFill: '#fff' })) {
           if (k === this.q.correct) {
             audio.sfx('good');
-            const first = !save.robotQ[this.q.flag];
-            this.state = 'right'; this.first = first;
-            if (first) {
-              save.robotQ[this.q.flag] = true; save.dp += 5;
-              const qn = parseInt(this.q.flag.slice(1), 10);
-              const fresh = qn >= 1 && qn <= 24 && !save.creature[qn - 1];
-              if (qn >= 1 && qn <= 24) save.creature[qn - 1] = true;
-              persist();
-              const card = game.data.hub.creatureCards[qn - 1];
-              // 카드 뽑기처럼: 뒷면 카드를 눌러야 무슨 카드인지 나옴
-              if (card) this.reveal.show({ pic: card.pic, frame: card.frame, kind: '생물 카드', name: card.quote, extra: (fresh ? '' : '(이미 가진 카드) · ') + '독도 포인트 +5' });
-            }
+            this.state = 'right';
+            // 맞힐 때마다 독도 포인트 +5, 생물 카드는 아직 없는 카드 중에서 랜덤 (다 모았으면 포인트 +5 더)
+            save.robotQ[this.q.flag] = true;
+            const cards = game.data.hub.creatureCards;
+            const missing = cards.map((c, i) => i).filter(i => !save.creature[i]);
+            const fresh = missing.length > 0;
+            const ci = fresh ? missing[Math.floor(Math.random() * missing.length)] : Math.floor(Math.random() * cards.length);
+            save.creature[ci] = true;
+            save.dp += fresh ? 5 : 10;
+            persist();
+            const card = cards[ci];
+            // 카드 뽑기처럼: 뒷면 카드를 눌러야 무슨 카드인지 나옴
+            this.reveal.show({ pic: card.pic, frame: card.frame, kind: '생물 카드', name: card.quote, extra: fresh ? '새 카드! · 독도 포인트 +5' : '이미 모은 카드 · 독도 포인트 +10' });
             this.onSolved?.();
           } else { audio.sfx('bad'); this.state = 'wrong'; this.msg = this.q.wrong[Math.floor(Math.random() * this.q.wrong.length)]; }
         }
