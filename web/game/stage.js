@@ -1,6 +1,7 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
 import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp } from './core.js';
 import { nav, Notice } from './widgets.js';
+import { generateLevel } from './levelgen.js';
 
 const U = 64;                 // 1 유닛 = 64px
 const GRAV = 9.81 * 3, JUMP = 12, SPEED = 5, MAXFALL = 22;
@@ -15,6 +16,11 @@ const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
 const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
+function mix(a, b, f) {
+  const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * f).toString(16).padStart(2, '0')).join('');
+}
 function spriteInfo(key) {
   const s = game.data.sprites[key];
   if (!s) return null;
@@ -59,8 +65,10 @@ export class StageSelectScene {
 export class StageScene {
   constructor(n) {
     this.n = n;
-    const d = game.data.stages[n - 1];
+    const orig = game.data.stages[n - 1];
+    const d = { ...orig, ...generateLevel(orig, n) };   // 들어갈 때마다 새로 만드는 랜덤 맵
     this.d = d;
+    this.diff = (n - 1) / 9;
     this.solids = [];
     this.deadly = [];
     this.tiles = [];
@@ -74,7 +82,7 @@ export class StageScene {
     this.start = [d.start[0], d.start[1] + 0.2];
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
-    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) : 0, vy: 0, t: Math.random() * 3, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
+    this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
     // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
     for (const rb of this.robots) {
       const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
@@ -188,7 +196,7 @@ export class StageScene {
     }
     // 열쇠
     for (const k of this.keys) {
-      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; audio.sfx('key'); this.modal = { type: 'key', n: k.n }; }
+      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.start = [k.x, k.y - 0.25]; audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
     }
     // 정령
     const s = this.spirit;
@@ -277,8 +285,21 @@ export class StageScene {
   draw() {
     const layer = this.notice.open ? 2 : this.modal ? 1 : 0;
     beginUI(layer);
-    // 하늘과 배경
-    ctx.fillStyle = '#9fd3f0'; ctx.fillRect(0, 0, W, H);
+    // 하늘과 배경: 스테이지가 오를수록 노을이 짐
+    const dd = this.diff;
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, mix('#7cc6f0', '#4a3a7c', dd));
+    sky.addColorStop(0.55, mix('#a9dcf3', '#e8735a', dd));
+    sky.addColorStop(1, mix('#d4eef8', '#ffc078', dd));
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    if (dd > 0.25) {
+      // 지는 해
+      const sy = 120 + dd * 330 - clamp((this.cam.y - this.bounds.b) * 4, 0, 120);
+      const g = ctx.createRadialGradient(980, sy, 10, 980, sy, 220);
+      g.addColorStop(0, `rgba(255,236,170,${0.9 * dd})`); g.addColorStop(0.25, `rgba(255,170,90,${0.6 * dd})`); g.addColorStop(1, 'rgba(255,140,80,0)');
+      ctx.fillStyle = g; ctx.fillRect(700, sy - 230, 560, 460);
+      ctx.fillStyle = `rgba(255,224,150,${dd})`; ctx.beginPath(); ctx.arc(980, sy, 46, 0, Math.PI * 2); ctx.fill();
+    }
     const bg = img('stagebg');
     if (bg) {
       const bw = 1600, bh = bw * bg.height / bg.width;
@@ -286,6 +307,8 @@ export class StageScene {
       ctx.globalAlpha = 0.75;
       for (let k = -1; k < 3; k++) ctx.drawImage(bg, ox + k * bw, H - bh + clamp((this.cam.y - this.bounds.b) * 6, 0, 200), bw, bh);
       ctx.globalAlpha = 1;
+      // 노을빛으로 물들이기
+      if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ff9a70', dd * 0.85); ctx.fillRect(0, 0, W, H); ctx.restore(); }
     }
     for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
     for (const dc of this.d.deco) if (!dc.bg && dc.s) this.drawWorldSprite(spriteInfo(dc.s), dc.x, dc.y, dc.sx, dc.sy);
@@ -331,6 +354,7 @@ export class StageScene {
       else if (Math.abs(p.vx) > 0.1) { sheet = 'boy_walk'; fr = Math.floor(p.anim * 10) % 4; }
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x, p.y, 0.8 * 1.25, p.face < 0);
     }
+    if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ffc4a0', dd * 0.7); ctx.fillRect(0, 0, W, H); ctx.restore(); }
     if (!this.ready) {
       ctx.fillStyle = 'rgba(27,43,54,.85)'; ctx.fillRect(0, 0, W, H);
       text(`스테이지${this.n}`, W / 2, H / 2 - 70, { size: 60, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
@@ -338,8 +362,35 @@ export class StageScene {
       return;
     }
     this.drawHUD(layer);
+    this.drawMinimap();
     if (this.modal) this.drawModal();
     this.notice.draw(2);
+  }
+  drawMinimap() {
+    const x = W - 270, y = 78, w = 250, h = 96;
+    // 맵이 길면 주인공 주변 70칸만 보여 줌
+    const b = this.bounds, span = Math.min(70, b.r - b.l + 2);
+    const L = clamp(this.p.x - span / 2, b.l - 1, Math.max(b.l - 1, b.r + 1 - span)), R = L + span;
+    const sc = w / span, vspan = h / sc;
+    const T = clamp(this.p.y + vspan / 2, b.b - 1 + vspan, Math.max(b.t, b.b - 1 + vspan)), B = T - vspan;
+    const mx = v => x + (w - (R - L) * sc) / 2 + (v - L) * sc, my = v => y + (h - (T - B) * sc) / 2 + (T - v) * sc;
+    ctx.save();
+    panel(x - 8, y - 6, w + 16, h + 12, { r: 8, fill: 'rgba(250,240,220,.85)', inner: false, lw: 3 });
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = '#7a5a3a';
+    for (const s of this.solids) ctx.fillRect(mx(s.x), my(s.y + s.h), Math.max(1.5, s.w * sc), Math.max(1.5, 0.6 * sc));
+    const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
+    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
+    for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
+    if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
+    if (this.door) dot(this.door.x, this.door.y, 4, this.door.open ? '#999' : '#8e44ad');
+    if (this.flag) dot(this.flag.x, this.flag.y, 3.5, '#e74c3c');
+    const blink = Math.floor(this.t * 4) % 2;
+    dot(this.p.x, this.p.y, blink ? 4.5 : 3.5, '#fff'); dot(this.p.x, this.p.y, blink ? 3 : 2.5, '#d35400');
+    // 카메라가 보는 범위
+    ctx.strokeStyle = 'rgba(58,47,40,.6)'; ctx.lineWidth = 1;
+    ctx.strokeRect(mx(this.cam.x - W / U / 2), my(this.cam.y + H / U / 2), (W / U) * sc, (H / U) * sc);
+    ctx.restore();
   }
   drawHUD(layer) {
     const d = this.d;
@@ -386,7 +437,8 @@ export class StageScene {
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
       const info = d.spirit ? spriteInfo(d.spirit.s) : null;
       if (info?.im) drawFit(info.im, 180, 240, 200, 200);
-      textBox(d.hints[m.n - 1], 410, 210, W - 600, 260, { size: 30 });
+      textBox(d.hints[m.n - 1], 410, 210, W - 600, 230, { size: 30 });
+      if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 440, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'msg') {
       panel(110, 210, W - 220, 260); face(m.face);
