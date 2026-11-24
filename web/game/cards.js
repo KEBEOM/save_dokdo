@@ -25,11 +25,14 @@ export class CardModeScene {
         if (locked) this.notice.push(`${m.name}는 독도퍼즐을 ${m.need}개이상 열어야 잠금해제 됩니다.\n\n<독도퍼즐 여는 방법>\n1. 메인화면의 독도석상 클릭!\n2. 영웅퍼즐로 들어가서 구입!`, { title: '<게임 잠김>', image: 'statue', h: 520 });
         else go(nav.cardGame(m));
       }
-      text(`짝 하나에 ${m.mult}점`, 670, y + 34, { size: 30, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+      // 보상: 버튼 옆 작은 알약 모양 칸
+      panel(660, y + 18, 210, 64, { r: 32, fill: 'rgba(250,240,220,.95)', inner: false, lw: 3 });
+      drawFit(img('dp'), 672, y + 26, 48, 48);
+      text(`짝마다 +${m.mult}`, 852, y + 32, { size: 28, align: 'right' });
       if (locked) drawFit(img('Lock'), 50, y + 20, 60, 60);
     });
     panel(860, 60, 380, 200, { fill: 'rgba(250,240,220,.95)' });
-    text('획득한 점수:', 890, 86, { size: 28 }); text(fmt(save.lastCardScore || 0), 1210, 86, { size: 28, align: 'right' });
+    text('지난 판 포인트:', 890, 86, { size: 28 }); text('+' + fmt(save.lastCardScore || 0), 1210, 86, { size: 28, align: 'right' });
     text('독도 포인트:', 890, 140, { size: 28 }); text(fmt(save.dp), 1210, 140, { size: 28, align: 'right' });
     drawFit(img('dp'), 890, 190, 50, 50);
     textBox('독도 포인트로 독도 석상의 영웅 퍼즐을 열 수 있어요', 950, 186, 270, 60, { size: 20, align: 'left' });
@@ -90,8 +93,8 @@ export class CardGameScene {
     ctx.fillRect(208, 28, 844 * ratio, 28);
     text(`${this.pairs} / ${this.m.pairs}`, 1220, 24, { size: 32, color: '#fff', stroke: '#2b2b2b', strokeW: 6, align: 'right' });
     const { rows, cols } = this.m;
-    const cw = Math.min(170, (W - 120) / cols - 16), ch = cw;
-    const x0 = (W - (cols * cw + (cols - 1) * 16)) / 2, y0 = 100 + (600 - (rows * ch + (rows - 1) * 16)) / 2;
+    const cw = Math.min(158, (W - 120) / cols - 16), ch = cw;   // 카드는 위 시간 막대와 아래 안내 글 사이에만
+    const x0 = (W - (cols * cw + (cols - 1) * 16)) / 2, y0 = 84 + (550 - (rows * ch + (rows - 1) * 16)) / 2;
     this.cards.forEach((c, i) => {
       const x = x0 + (i % cols) * (cw + 16), y = y0 + Math.floor(i / cols) * (ch + 16);
       const f = c.flip, sx = Math.abs(Math.cos(f * Math.PI));
@@ -102,7 +105,7 @@ export class CardGameScene {
       ctx.restore();
       if (hit(x, y, cw, ch, 0)) this.pick(c);
     });
-    if (this.phase === 'preview') text(this.t < 3.5 ? '카드를 기억하세요!' : '시작!', W / 2, H - 70, { size: 44, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
+    if (this.phase === 'preview') text(this.t < 3.5 ? '카드를 기억하세요!' : '시작!', W / 2, H - 72, { size: 40, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
     if (this.phase === 'end') {
       dim(0.55);
       panel(W / 2 - 330, 120, 660, 470);

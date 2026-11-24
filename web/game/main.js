@@ -40,6 +40,7 @@ async function boot() {
   } catch (_) { /* 글꼴을 못 불러와도 기본 글꼴로 계속 */ }
   if (bar) bar.style.width = '30%';
   game.data = await (await fetch('game/data/gamedata.json')).json();
+  game.puzzles = await (await fetch('game/data/puzzles.json')).json();
   if (bar) bar.style.width = '50%';
   // 처음 화면에 바로 필요한 그림 먼저
   const first = ['bg1', 'bg3', 'bg5', 'bg6', 'bg4', 'dokdo_icon', 'daddy', 'forest', 'statue', 'water_icon', 'card_icon', 'daddy_small', 'dp', 'heart', 'savept', 'Lock'];

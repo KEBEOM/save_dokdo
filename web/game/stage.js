@@ -214,8 +214,8 @@ export class StageScene {
       if (rb.blue && !rb.solved && res.landed) {
         rb.jt -= dt;
         if (rb.jt <= 0) {
-          rb.jt = 0.9 + Math.random() * 1.6;
-          if (Math.random() < 0.35 + 0.04 * this.n) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; }
+          rb.jt = 0.45 + Math.random() * 0.9;                       // 예전보다 약 2배 자주
+          if (Math.random() < Math.min(0.92, 0.6 + 0.035 * this.n)) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; }
         }
       }
       if (rb.hop > 0) rb.hop -= dt;
@@ -488,7 +488,7 @@ export class StageScene {
     const m = this.modal, d = this.d, L = 1;
     dim(0.5);
     const close = () => { this.modal = null; };
-    const face = f => drawFit(img(f === 'king' ? 'roboking' : 'daddy4'), 130, 230, 170, 170, f === 'king' ? { frame: [0, 0, 80, 80] } : {});
+    const face = (f, x = 130, y = 230, sz = 170) => drawFit(img(f === 'king' ? 'roboking' : 'daddy4'), x, y, sz, sz, f === 'king' ? { frame: [0, 0, 80, 80] } : {});
     if (m.type === 'key') {
       panel(140, 170, W - 280, 380);
       panel(170, 140, 230, 56, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
@@ -513,30 +513,41 @@ export class StageScene {
       panel(90, 70, W - 180, 560);
       panel(W / 2 - 170, 46, 340, 56, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
       text(d.quizTitle || `스테이지 ${this.n} 문제`, W / 2, 56, { size: 30, color: '#fff', align: 'center' });
-      face(this.n >= 9 ? 'king' : 'daddy');
-      textBox(d.quiz, 320, 130, W - 470, 150, { size: 34 });
+      // 위: 얼굴 + 문제, 아래: 보기 4개 (서로 겹치지 않게)
+      panel(130, 120, 160, 160, { fill: '#fff8ea', r: 12, inner: false });
+      face(this.n >= 9 ? 'king' : 'daddy', 140, 130, 140);
+      textBox(d.quiz, 320, 120, W - 450, 160, { size: 34 });
       const answers = d.answers;
       answers.forEach((a, k) => {
-        const x = 150 + (k % 2) * 500, y = 320 + Math.floor(k / 2) * 130;
-        if (button(a.t, x, y, 470, 110, { layer: L, size: 32 })) this.answerGate(a);
+        const x = 130 + (k % 2) * 520, y = 320 + Math.floor(k / 2) * 140;
+        if (button(a.t, x, y, 500, 116, { layer: L, size: 32 })) this.answerGate(a);
       });
     } else if (m.type === 'save') {
       const bg = img('sp/' + d.saveBg);
-      panel(140, 60, W - 280, 600, { fill: '#2d3a45' });
-      if (bg) drawFit(bg, 160, 80, W - 320, 470);
-      panel(W / 2 - 260, 560, 520, 76, {});
-      textBox(d.saveText, W / 2 - 240, 566, 480, 64, { size: 30 });
-      text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!  독도 포인트 +10`, W / 2, 100, { size: 30, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
-      if (button('확인', W - 330, 570, 160, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
+      // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
+      panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
+      text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
+      text('독도 포인트 +10', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      if (bg) drawFit(bg, 170, 134, W - 340, 430);
+      panel(200, 584, W - 590, 76, {});
+      textBox(d.saveText, 220, 590, W - 630, 64, { size: 30 });
+      if (button('확인', W - 370, 592, 170, 62, { layer: L, size: 28 }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'guide') {
-      panel(100, 50, W - 200, H - 100);
-      drawFit(img('daddy'), 120, 70, 200, 200);
-      text('게임 방법 안내', 350, 80, { size: 40, color: '#7a3b12' });
-      GUIDE.forEach((g, k) => textBox('• ' + g, 350, 130 + k * 76, W - 520, 70, { size: 23, align: 'left' }));
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['dokdo_icon', [160, 0, 160, 160]], [null], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['daddy_small', [0, 0, 82, 82]]];
-      icons.forEach(([n, fr], k) => { if (n) drawFit(img(n), 270, 135 + k * 76, 60, 60, { frame: fr }); });
-      const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 270, 135 + 2 * 76, 60, 60);
-      if (button('닫기', W - 300, H - 130, 160, 60, { layer: L }) || keyHit('Escape', 'Enter')) close();
+      panel(100, 30, W - 200, H - 60);
+      drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
+      text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
+      // 한 줄에 그림 하나 + 설명 하나
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['daddy_small', [0, 0, 82, 82]]];
+      GUIDE.forEach((g, k) => {
+        const y = 118 + k * 68;
+        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 62);
+        const [n, fr] = icons[k] || [];
+        if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 146, y + 14, 44, 34); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(146, y + 14, 44, 34); }
+        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 140, y + 4, 56, 54); }
+        else if (n) drawFit(img(n), 140, y + 4, 56, 54, { frame: fr });
+        textBox(g, 214, y + 2, W - 360, 58, { size: 22, align: 'left' });
+      });
+      if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
     } else if (m.type === 'cheat') {
       panel(170, 150, W - 340, 400);
       text('미션수행', W / 2, 176, { size: 38, align: 'center', color: '#7a3b12' });

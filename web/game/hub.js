@@ -11,7 +11,6 @@ export const spiritShowCost = i => 10 * (i + 1);   // 마을에 정령 불러내
 export const cardPrice = buys => 30 + 10 * buys;    // 캐릭터·생물 카드 (점점 비싸짐)
 const SPIRIT_FRAMES = [0, 0, 1, 2, 7, 5, 4, 6, 3, 8];
 // 그림이 오른쪽을 보고 있는 정령 (독도 강치, 괭이갈매기). 나머지는 왼쪽을 봄
-const FACES_RIGHT = new Set([6, 7]); // 정령 그림 (spirits 시트 칸 번호, 1번은 물의 정령 시트)
 
 export function spiritImage(i) {
   return i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
@@ -74,7 +73,7 @@ export class HubScene {
       if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
       w.x += w.vx * dt;
       if (w.x < 200 || w.x > 1080) { w.vx = -w.vx; w.x = Math.max(200, Math.min(1080, w.x)); }
-      if (w.vx) w.flip = FACES_RIGHT.has(w.i) ? w.vx < 0 : w.vx > 0;
+      if (w.vx) w.flip = w.vx < 0;   // 정령 그림은 모두 오른쪽을 보고 있음
     }
     if (this.bubble) { this.bubble.t -= dt; if (this.bubble.t <= 0) this.bubble = null; }
   }
@@ -155,30 +154,68 @@ export class HubScene {
     if (button('닫기', W - 260, H - 130, 150, 56, { layer: L })) this.panel = null;
   }
   memGrid(kind) {
-    const L = 1, d = game.data;
+    const L = 1;
     const isSpirit = kind === 'spirit';
     const n = isSpirit ? 10 : 5;
-    panel(60, 40, W - 120, H - 80);
-    text(isSpirit ? '정령들과의 추억' : '영웅들과의 추억', 100, 62, { size: 38, color: '#7a3b12' });
-    drawPoints(560, 56, ['dp'], { w: 200 });
-    const cols = isSpirit ? 5 : 5, cw = 210, ch = isSpirit ? 250 : 400, gx = 14;
-    const x0 = (W - (cols * cw + (cols - 1) * gx)) / 2, y0 = 130;
-    for (let i = 0; i < n; i++) {
-      const cx = x0 + (i % cols) * (cw + gx), cy = y0 + Math.floor(i / cols) * (ch + 14);
-      const opened = isSpirit ? save.spiritMem[i] : save.heroMem[i];
-      panel(cx, cy, cw, ch, { fill: opened ? '#fff8ea' : '#d9cdb8', r: 8 });
-      const im = img((isSpirit ? (opened ? 'sp_on' : 'sp_off') : (opened ? 'hp_on' : 'hp_off')) + (i + 1));
-      drawFit(im, cx + 10, cy + 10, cw - 20, ch - 100);
-      text(`${i + 1}번 퍼즐`, cx + cw / 2, cy + ch - 86, { size: 22, align: 'center', color: '#7a3b12' });
-      textBox(isSpirit ? SPIRIT_TITLES[i] : HERO_TITLES[i], cx + 6, cy + ch - 62, cw - 12, 30, { size: 22 });
-      if (!opened) {
-        const need = isSpirit ? `${spiritMemCost(i)} 독도 포인트` : `${fmt(HERO_COST[i])} 독도 포인트`;
-        text(isSpirit && !save.cleared[i] ? `${i + 1}스테이지를 깨면 열려요` : need, cx + cw / 2, cy + ch - 30, { size: 18, align: 'center', color: '#5a4a3a' });
-      }
-      if (hit(cx, cy, cw, ch, L)) this.openMem(kind, i);
+    const pz = game.puzzles[kind], pre = isSpirit ? 'spz' : 'hpz';
+    const opened = i => (isSpirit ? save.spiritMem[i] : save.heroMem[i]);
+    panel(40, 24, W - 80, H - 48);
+    text(isSpirit ? '정령들과의 추억' : '영웅들과의 추억', 80, 44, { size: 38, color: '#7a3b12' });
+    drawPoints(W - 300, 38, ['dp'], { w: 220 });
+    text(`${Array.from({ length: n }, (_, i) => opened(i)).filter(Boolean).length} / ${n} 조각`, 420, 54, { size: 24, color: '#7a5a3a' });
+
+    // 왼쪽: 원작처럼 조각을 맞춘 큰 그림 (열린 조각은 색, 닫힌 조각은 흑백)
+    const fx = 64, fy = 104, fw = 600, fh = 560;
+    panel(fx, fy, fw, fh, { fill: '#3a3f47', inner: false, r: 10 });
+    const s = Math.min((fw - 24) / pz.w, (fh - 24) / pz.h), ox = fx + (fw - pz.w * s) / 2, oy = fy + (fh - pz.h * s) / 2;
+    // 마우스가 가리키는 조각
+    let hover = -1;
+    if (ui.top === L && inside(input.x, input.y, ox, oy, pz.w * s, pz.h * s)) {
+      const [gw, gh] = pz.grid, gx = Math.floor((input.x - ox) / (pz.w * s) * gw), gy = Math.floor((input.y - oy) / (pz.h * s) * gh);
+      hover = pz.map.charCodeAt(gy * gw + gx) - 49;
     }
-    textBox(isSpirit ? '달리고 구하고 풀어라! 에서 스테이지를 깨면 정령 퍼즐을 열 수 있어요.' : '카드 뒤집기는 난이도가 높을 수록 독도 포인트를 많이 받아요.\n영웅 퍼즐을 1개 열면 노멀모드, 3개 열면 하드모드가 열려요.', 90, H - 140, W - 420, 80, { size: 22, align: 'left', color: '#5a4a3a' });
-    if (button('뒤로가기', W - 290, H - 128, 190, 60, { layer: L })) this.panel = 'memories';
+    if (this.hoverRow !== undefined && this.hoverRow >= 0) hover = this.hoverRow;
+    for (let i = 0; i < n; i++) {
+      const r = pz.rects[i];
+      const im = img(pre + (opened(i) ? '_on' : '_off') + (i + 1));
+      if (!im) continue;
+      ctx.save();
+      if (i === hover) { ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 18; }
+      ctx.drawImage(im, ox + r[0] * s, oy + r[1] * s, (r[2] - r[0]) * s, (r[3] - r[1]) * s);
+      ctx.restore();
+    }
+    if (hover >= 0) ui.cursor = 'pointer';
+    if (hover >= 0 && hit(ox, oy, pz.w * s, pz.h * s, L)) this.openMem(kind, hover);
+
+    // 오른쪽: 퍼즐 목록
+    const lx = 690, lw = W - 64 - lx, top = 104;
+    const rowH = isSpirit ? 44 : 88, gap = isSpirit ? 6 : 14;
+    this.hoverRow = -1;
+    for (let i = 0; i < n; i++) {
+      const y = top + i * (rowH + gap), on = opened(i);
+      const over = ui.top === L && inside(input.x, input.y, lx, y, lw, rowH);
+      if (over) this.hoverRow = i;
+      panel(lx, y, lw, rowH, { r: 8, fill: on ? '#fff8ea' : over ? '#efe4cf' : '#e3d6bf', inner: false, lw: 3 });
+      ctx.fillStyle = on ? '#7a3b12' : '#8a7a66';
+      ctx.beginPath(); ctx.arc(lx + 26, y + rowH / 2, 16, 0, Math.PI * 2); ctx.fill();
+      text(String(i + 1), lx + 26, y + rowH / 2 - 12, { size: 20, align: 'center', color: '#fff' });
+      const title = isSpirit ? SPIRIT_TITLES[i] : HERO_TITLES[i];
+      text(title, lx + 54, y + (isSpirit ? 10 : 14), { size: 24, color: on ? '#3a2f28' : '#5a4a3a' });
+      // 오른쪽 끝: 상태
+      let status, col = '#5a4a3a';
+      if (on) { status = '열림 ✔'; col = '#3d8a3a'; }
+      else if (isSpirit && !save.cleared[i]) { status = `${i + 1}스테이지 깨기`; col = '#9a6a3a'; }
+      else status = `${fmt(isSpirit ? spiritMemCost(i) : HERO_COST[i])} 포인트`;
+      if (isSpirit) text(status, lx + lw - 14, y + 12, { size: 20, align: 'right', color: col });
+      else {
+        text(status, lx + 54, y + 50, { size: 20, color: col });
+        if (on) text('눌러서 읽기', lx + lw - 14, y + 50, { size: 18, align: 'right', color: '#7a5a3a' });
+      }
+      if (hit(lx, y, lw, rowH, L)) this.openMem(kind, i);
+    }
+    textBox(isSpirit ? '스테이지를 깨면 같은 번호 퍼즐을 열 수 있어요. 그림이나 목록을 눌러 보세요!'
+      : '영웅 퍼즐을 1개 열면 카드 뒤집기 노멀, 3개 열면 하드 모드가 열려요.', lx, H - 102, lw - 210, 60, { size: 19, align: 'left', color: '#7a5a3a' });
+    if (button('뒤로가기', W - 64 - 190, H - 100, 190, 56, { layer: L, size: 26 })) this.panel = 'memories';
   }
   draw_spiritMem() { this.memGrid('spirit'); }
   draw_heroMem() { this.memGrid('hero'); }
@@ -216,29 +253,29 @@ export class HubScene {
   // ---------------------------------------------------------------- 패널: 정령 구출 (마을에 불러내기)
   draw_spirits() {
     const L = 1, d = game.data.hub, i = this.page;
-    panel(240, 40, 800, H - 80);
-    text('정령 구출', 640, 62, { size: 40, align: 'center', color: '#7a3b12' });
+    panel(240, 30, 800, H - 60);
+    text('정령 구출', 640, 46, { size: 40, align: 'center', color: '#7a3b12' });
     const shown = save.shown[i];
     const s = spiritImage(i);
-    panel(440, 120, 400, 300, { fill: '#2d3a45', inner: false });
+    panel(440, 100, 400, 280, { fill: '#2d3a45', inner: false });
     ctx.save(); if (!shown) ctx.filter = 'brightness(0.25)';
-    drawFit(s.im, 480, 130, 320, 280, { frame: s.frame });
+    drawFit(s.im, 480, 110, 320, 260, { frame: s.frame });
     ctx.restore();
-    if (!shown) drawFit(img('Lock'), 580, 210, 120, 120);
-    text(d.spiritNames[i], 640, 432, { size: 36, align: 'center' });
-    text(save.rescued[i] ? '달리기에서 구출한 정령이에요' : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 474, { size: 22, align: 'center', color: '#5a4a3a' });
+    if (!shown) drawFit(img('Lock'), 580, 180, 120, 120);
+    text(`${i + 1} / 10`, 820, 108, { size: 22, align: 'right', color: '#f4e3c3' });
+    text(d.spiritNames[i], 640, 392, { size: 36, align: 'center' });
+    text(save.rescued[i] ? '달리기에서 구출한 정령이에요' : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 436, { size: 22, align: 'center', color: '#5a4a3a' });
     if (shown) {
-      panel(490, 520, 300, 70, { fill: '#c8e6b0' });
-      text('구출 성공!', 640, 538, { size: 32, align: 'center' });
+      panel(490, 484, 300, 70, { fill: '#c8e6b0' });
+      text('구출 성공!', 640, 502, { size: 32, align: 'center' });
     } else {
       const c1 = spiritShowCost(i);
-      if (button(`${fmt(c1)} 포인트로 구출`, 440, 520, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
+      if (button(`${fmt(c1)} 포인트로 구출`, 440, 484, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
     }
-    if (button('◀', 260, 230, 70, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
-    if (button('▶', 950, 230, 70, 90, { layer: L, size: 34 }) || (keyHit('ArrowRight') && L === ui.top)) this.page = (i + 1) % 10;
-    text(`${i + 1} / 10`, 640, 612, { size: 26, align: 'center' });
-    textBox('정령들을 포인트를 주고 풀어줄 수 있어요. 풀어준 정령은 마을에 나와 이야기를 들려줘요!', 270, 640, 560, 50, { size: 20, align: 'left', color: '#5a4a3a' });
-    if (button('닫기', 880, 620, 140, 56, { layer: L })) this.panel = null;
+    if (button('◀', 270, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
+    if (button('▶', 930, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowRight') && L === ui.top)) this.page = (i + 1) % 10;
+    textBox('포인트를 주고 정령을 풀어줄 수 있어요. 풀어준 정령은 마을에 나와 이야기를 들려줘요!', 280, 584, 560, 64, { size: 20, align: 'left', color: '#5a4a3a' });
+    if (button('닫기', 870, 588, 140, 56, { layer: L })) this.panel = null;
   }
   buySpirit(i, kind, cost) {
     const name = kind === 'dp' ? '독도 포인트' : '구출 포인트';
@@ -313,10 +350,11 @@ export class HubScene {
       ['마지막 승부', '10스테이지까지 정령 10명을 모두 구하면 로보킹과 독도를 건 퀴즈 배틀을 할 수 있어요!'],
     ];
     lines.forEach(([h, d], i) => {
-      text('• ' + h, 360, 130 + i * 82, { size: 28, color: '#2b2b2b' });
-      textBox(d, 390, 164 + i * 82, W - 520, 44, { size: 21, align: 'left', valign: 'top', color: '#5a4a3a' });
+      const y = 122 + i * 76;
+      text('• ' + h, 360, y, { size: 27, color: '#2b2b2b' });
+      textBox(d, 384, y + 34, W - 520, 34, { size: 20, align: 'left', valign: 'top', color: '#5a4a3a' });
     });
-    if (button('닫기', W - 270, H - 120, 150, 56, { layer: L })) this.panel = null;
+    if (button('닫기', W - 270, H - 112, 150, 56, { layer: L })) this.panel = null;
   }
 }
 

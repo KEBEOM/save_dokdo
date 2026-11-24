@@ -70,14 +70,14 @@ export class FinalBattleScene {
   }
   drawQuestion() {
     const L = 0, q = this.q;
-    panel(60, 160, W - 120, 260, { fill: 'rgba(250,240,220,.97)' });
-    panel(80, 140, 150, 46, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
-    text(`문제 ${this.num}`, 155, 148, { size: 26, color: '#fff', align: 'center' });
-    // 시간
-    ctx.fillStyle = '#3a2f28'; ctx.fillRect(260, 150, 600, 22);
-    ctx.fillStyle = this.time > 15 ? '#e0b040' : '#e06040'; ctx.fillRect(262, 152, 596 * Math.max(0, this.time) / Q_TIME, 18);
-    text(`남은시간 ${Math.ceil(Math.max(0, this.time))}`, 880, 146, { size: 24 });
-    textBox(q.q, 90, 190, W - 180, 220, { size: 30 });
+    // 문제 번호 · 남은 시간 (문제 칸 위에 한 줄로)
+    panel(60, 126, 150, 44, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
+    text(`문제 ${this.num}`, 135, 133, { size: 26, color: '#fff', align: 'center' });
+    panel(226, 130, 760, 36, { r: 8, fill: 'rgba(58,47,40,.92)', line: '#f4e3c3', inner: false, lw: 2 });
+    ctx.fillStyle = this.time > 15 ? '#e0b040' : '#e06040'; ctx.fillRect(234, 138, 744 * Math.max(0, this.time) / Q_TIME, 20);
+    text(`남은 시간 ${Math.ceil(Math.max(0, this.time))}초`, 1000, 132, { size: 26, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+    panel(60, 178, W - 120, 246, { fill: 'rgba(250,240,220,.97)' });
+    textBox(q.q, 90, 192, W - 180, 218, { size: 30 });
     q.a.forEach((a, k) => {
       const x = 60 + (k % 2) * 590, y = 436 + Math.floor(k / 2) * 112;
       let fill;

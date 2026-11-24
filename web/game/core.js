@@ -59,6 +59,10 @@ canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', e => { input.pointers.delete(e.pointerId); if (!input.pointers.size) input.down = false; });
 canvas.addEventListener('wheel', e => { input.wheel += e.deltaY; e.preventDefault(); }, { passive: false });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
+// 폰에서 꾹 누를 때 뜨는 선택·복사 메뉴, 두 번 눌러 확대 막기 (포인터 입력은 그대로 들어옴)
+for (const t of ['touchstart', 'touchmove', 'touchend']) canvas.addEventListener(t, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('keydown', e => {
   if (!input.keys.has(e.code)) input.keyPressed.add(e.code);
   input.keys.add(e.code);

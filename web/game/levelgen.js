@@ -91,7 +91,6 @@ export function generateLevel(orig, n) {
       const mx = endOf(last) + 1;
       const m = { x0: mx, w: 2, top, ax: 0, ay: R, speed: 1.5 + 0.6 * e, phase: Math.random() * Math.PI * 2 };
       movers.push(m); reserved.push({ x0: mx, w: 2, top: top + R, bottom: top - 1 });
-      for (let yy = top + 1.5; yy < top + R; yy += 1.8) coins.push([mx + 1, yy]);
       const q = add(mx + 2 + 1, irand(3, 5), top + R - rand(0, 0.5), 'ledge');
       last = q; top = q.top;
     },
@@ -172,42 +171,77 @@ export function generateLevel(orig, n) {
   // 발판 위에 줄지은 독도 포인트
   for (const p of path) if (p.w >= 3 && Math.random() < 0.3) for (let k = 0; k < Math.min(3, p.w - 1); k++) coins.push([p.x0 + 1 + k, p.top + 0.7]);
 
-  // 로봇: 빨간 로봇(걸어 다님)은 예전보다 두 배 많고 빠르게
+  // 로봇: 한 발판에 로봇 하나. 꼭 있어야 하는 문제 로봇을 먼저 놓고, 남은 발판에 빨간 로봇·장애물 로봇
   const robots = [];
   const used = new Set();
-  const roomy = path.filter(p => p.w >= (n >= 4 ? 2 : 3) && p.kind !== 'ledge' && p.kind !== 'climb' && p !== at(0) && !keyPlats.includes(p));
-  const redCount = Math.min(roomy.length, 2 + Math.round(2.2 * n));
-  const shuffled = roomy.slice().sort(() => Math.random() - 0.5);
-  for (let k = 0; k < redCount; k++) {
-    const p = shuffled[k]; used.add(p);
-    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n });
-  }
-  // 문제를 내는 파란 로봇은 원작 스테이지의 문제 그대로
+  const itemPlats = new Set([...keyPlats, spiritPlat]);
+  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0);
+  // 1) 문제를 내는 파란 로봇 (원작 스테이지의 문제 그대로): 맵 전체에 고르게
   const qs = [...new Set(orig.robots.filter(r => r.q).map(r => r.q))];
-  const freeSpots = path.filter(p => p.w >= 2 && !used.has(p) && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar');
+  const qSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p));
   qs.forEach((q, k) => {
-    const p = freeSpots[Math.floor((k + 1) * freeSpots.length / (qs.length + 1))] || pick(path.filter(q => q.kind !== 'climb' && q.kind !== 'pillar')) || pick(path);
+    const want = Math.floor((k + 1) * qSpots.length / (qs.length + 1));
+    let p = null;
+    for (let d = 0; d < qSpots.length && !p; d++) for (const j of [want + d, want - d]) if (qSpots[j] && free(qSpots[j])) { p = qSpots[j]; break; }
+    if (!p) p = path.find(free) || path[0];
     used.add(p);
-    robots.push({ x: p.x0 + p.w - 0.8, y: p.top + 0.4, blue: true, walk: false, q, flip: false });
+    robots.push({ x: p.x0 + p.w - 0.8, y: p.top + 0.4, blue: true, walk: false, q, flip: false, plat: p });
   });
-  // 가만히 서 있다가 가끔 뛰어오르는 파란 로봇(장애물)
+  // 2) 가만히 서 있다가 자주 뛰어오르는 파란 로봇(장애물)
   const blockers = Math.round(2 * n / 3);
-  const blockSpots = path.filter(p => p.w >= 3 && !used.has(p) && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar').sort(() => Math.random() - 0.5);
+  const blockSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p)).sort((a, b) => b.w - a.w + Math.random() * 2 - 1);
   for (let k = 0; k < Math.min(blockers, blockSpots.length); k++) {
-    const p = blockSpots[k];
-    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true });
+    const p = blockSpots[k]; used.add(p);
+    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true, plat: p });
+  }
+  // 3) 빨간 로봇(걸어 다님): 예전보다 약 두 배 많고 빠르게
+  const roomy = path.filter(p => p.w >= (n >= 4 ? 2 : 3) && p.kind !== 'ledge' && p.kind !== 'climb' && free(p)).sort(() => Math.random() - 0.5);
+  const redCount = Math.min(roomy.length, 2 + Math.round(2.2 * n));
+  for (let k = 0; k < redCount; k++) {
+    const p = roomy[k]; used.add(p);
+    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n, plat: p });
   }
 
-  const keys = keyPlats.map((p, k) => ({ n: k + 1, x: p.x0 + p.w / 2, y: p.top + 0.7, s: 'Dokdo_Icon__Dokdo_Icon_1' }));
-  const spirit = orig.spirit ? { ...orig.spirit, x: spiritPlat.x0 + spiritPlat.w / 2, y: spiritPlat.top + 0.6 } : null;
   const doorX = end.x0 + 3, flagX = end.x0 + end.w - 2;
   const door = { ...orig.door, x: doorX, y: end.top + 0.93, box: [doorX - 0.566, end.top, 1.132, 80] };
   const flag = { ...orig.flag, x: flagX, y: end.top + 0.8, box: [flagX - 0.5, end.top, 1, 1] };
+  // ---------------------------------------------------------------- 서로 겹치지 않게 정리
+  // 지형(타일 + 움직이는 발판이 지나가는 자리), 로봇이 서 있거나 걸어 다니는 자리, 열쇠·정령·문은 서로 겹치면 안 됨
+  const boxHit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const terrain = platforms.map(t => ({ x: t.box[0], y: t.box[1], w: 1, h: 1 }))
+    .concat(movers.map(m => ({ x: m.x0 - 0.1, y: m.top - 1.1, w: m.w + m.ax + 0.2, h: 1.2 + m.ay + 1.2 })));
+  const hitsTerrain = b => terrain.some(t => boxHit(b, t));
+  // 로봇끼리: 한 발판에 로봇 하나 (문제 로봇이 우선)
+  const rOrder = robots.map((r, i) => i).sort((a, b) => (robots[b].q ? 1 : 0) - (robots[a].q ? 1 : 0));
+  const taken = new Set(), keep = new Set();
+  for (const i of rOrder) { const r = robots[i]; if (r.plat && taken.has(r.plat)) continue; taken.add(r.plat); keep.add(i); }
+  const finalRobots = robots.filter((r, i) => keep.has(i));
+  const robotZone = r => r.walk ? { x: r.plat.x0 - 0.1, y: r.plat.top, w: r.plat.w + 0.2, h: 1.1 } : { x: r.x - 0.5, y: r.y - 0.4, w: 1.0, h: 1.3 };
+  const zones = finalRobots.map(robotZone);
+  // 열쇠·정령: 지형에 박히면 위로 조금씩 올림
+  const lift = (o, half) => { for (let k = 0; k < 8 && hitsTerrain({ x: o.x - half, y: o.y - half, w: half * 2, h: half * 2 }); k++) o.y += 0.25; };
+  const keyObjs = keyPlats.map((p, k) => ({ n: k + 1, x: p.x0 + p.w / 2, y: p.top + 0.7, s: 'Dokdo_Icon__Dokdo_Icon_1' }));
+  keyObjs.forEach(o => lift(o, 0.45));
+  const spiritObj = orig.spirit ? { ...orig.spirit, x: spiritPlat.x0 + spiritPlat.w / 2, y: spiritPlat.top + 0.6 } : null;
+  if (spiritObj) lift(spiritObj, 0.55);
+  const doorZone = { x: end.x0, y: end.top, w: end.w, h: 3 };
+  const items = keyObjs.map(o => ({ x: o.x - 0.5, y: o.y - 0.5, w: 1, h: 1 }));
+  if (spiritObj) items.push({ x: spiritObj.x - 0.7, y: spiritObj.y - 0.7, w: 1.4, h: 1.4 });
+  // 독도 포인트: 지형·로봇·열쇠·정령·문·다른 포인트와 겹치면 빼기
+  const placed = [];
+  for (const [cx, cy] of coins) {
+    const b = { x: cx - 0.32, y: cy - 0.32, w: 0.64, h: 0.64 };
+    if (hitsTerrain(b) || zones.some(z => boxHit(b, z)) || items.some(z => boxHit(b, z)) || boxHit(b, doorZone)) continue;
+    if (placed.some(([px, py]) => Math.abs(px - cx) < 0.8 && Math.abs(py - cy) < 0.8)) continue;
+    placed.push([cx, cy]);
+  }
+  coins.length = 0; coins.push(...placed);
+  robots.length = 0; robots.push(...finalRobots.map(({ plat, ...r }) => r));
   const ys = plats.map(p => p.top).concat(movers.map(m => m.top + m.ay));
   const start = [0, 1.2];
   const deco = [{ s: 'StartGuide__StartGuide_' + (n - 1), x: -1.8, y: 0.55, sx: 1.376, sy: 1.376 }];
   return {
-    platforms, movers, coins, robots, keys, spirit, door, flag, start, deco,
+    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco,
     topLeft: [-4, Math.max(...ys) + 6], bottomRight: [end.x0 + end.w + 2, Math.min(...ys) - 1],
     generated: true,
   };
