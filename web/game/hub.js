@@ -324,7 +324,7 @@ function cardPic(pic) { const n = cardPicName(pic); return n ? img(n) : null; }
 // ================================================================ 게임 선택 (생물 카드 / 달리기 / 마지막 승부)
 export class SelectScene {
   constructor() { this.notice = new Notice(); this.t = 0; }
-  enter() { audio.play('quiet_forest'); }
+  enter() { audio.play('run_intro'); }
   update(dt) { this.t += dt; }
   draw() {
     beginUI(this.notice.open ? 1 : 0);

@@ -26,7 +26,7 @@ function spriteInfo(key) {
 // ================================================================ 스테이지 선택
 export class StageSelectScene {
   constructor() { this.notice = new Notice(); this.t = 0; }
-  enter() { audio.play('protect_dokdo', false); }
+  enter() { audio.play('run_intro'); }
   update(dt) { this.t += dt; }
   draw() {
     beginUI(this.notice.open ? 1 : 0);
@@ -75,6 +75,19 @@ export class StageScene {
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
     this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) : 0, vy: 0, t: Math.random() * 3, solved: !!(r.q && save.robotQ[game.data.robotQuestions[r.q]?.flag]) }));
+    // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
+    for (const rb of this.robots) {
+      const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
+      if (under) continue;
+      let best = null, bd = Infinity;
+      for (const s of this.solids) {
+        const top = s.y + s.h, cx = s.x + s.w / 2;
+        if (this.solids.some(o => o !== s && Math.abs(o.x - s.x) < 0.5 && o.y > s.y && o.y - top < 1.2)) continue; // 위가 막힌 칸 제외
+        const dist = Math.hypot(cx - rb.x, top - rb.y);
+        if (dist < bd) { bd = dist; best = s; }
+      }
+      if (best) { rb.x = rb.sx0 = best.x + best.w / 2; rb.y = rb.sy0 = best.y + best.h + ROBOT_R + 0.02; }
+    }
     this.spirit = d.spirit && !save.rescued[n - 1] ? { ...d.spirit, got: false } : null;
     this.door = { ...d.door, open: false };
     this.flag = d.flag;
@@ -93,7 +106,7 @@ export class StageScene {
     preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'stagebg'])).then(() => { this.ready = true; });
   }
   enter() {
-    audio.play(this.n >= 9 ? 'child_adventure' : 'protect_dokdo');
+    audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
     if (this.returnFromQuiz) { this.returnFromQuiz = false; }
   }
   get busy() { return !this.ready || !!this.modal || this.notice.open; }
@@ -476,7 +489,7 @@ export class RobotQuizScene {
     this.q = game.data.robotQuestions[qid]; this.back = back; this.onSolved = onSolved;
     this.i = 0; this.t = 0; this.state = 'intro'; this.msg = null;
   }
-  enter() { audio.play('robot_attack'); }
+  enter() { audio.play('roboking_battle'); }
   update(dt) {
     this.t += dt;
     if (this.state === 'intro' && this.t > 3.2) { this.t = 0; if (++this.i >= this.q.intro.length) this.state = 'question'; }

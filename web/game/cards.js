@@ -11,7 +11,7 @@ const heroCount = () => save.heroMem.filter(Boolean).length;
 
 export class CardModeScene {
   constructor() { this.notice = new Notice(); }
-  enter() { audio.play('card_game', false); }
+  enter() { audio.play('run_intro'); }
   update() {}
   draw() {
     beginUI(this.notice.open ? 1 : 0);

@@ -271,7 +271,11 @@ export const audio = {
     if (this.music && this.music.paused && !this.muted) this.music.play().catch(() => {});
   },
   play(name, loop = true) {
-    if (this.musicName === name) return;
+    if (this.musicName === name && this.music) {
+      this.music.loop = loop;
+      if (this.music.ended && loop) { this.music.currentTime = 0; if (this.unlocked && !this.muted) this.music.play().catch(() => {}); }
+      return;
+    }
     this.stop();
     this.musicName = name;
     if (!name) return;
