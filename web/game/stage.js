@@ -562,8 +562,7 @@ export class StageScene {
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
     if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); ctx.save(); if (!save.rescued[this.n - 1]) ctx.filter = 'brightness(.2)'; if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50); ctx.restore(); }
-    if (button('가이드', W - 440, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
-    if (button('게임이\n힘들어요!', W - 310, 12, 150, 56, { size: 20 })) this.modal = { type: 'cheat' };
+    if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
     // 터치 버튼
     if (input.touch) {
@@ -643,28 +642,6 @@ export class StageScene {
         textBox(g, 214, y + 1, W - 360, 49, { size: 21, align: 'left' });
       });
       if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
-    } else if (m.type === 'cheat') {
-      panel(170, 150, W - 340, 400);
-      text('미션수행', W / 2, 176, { size: 38, align: 'center', color: '#7a3b12' });
-      textBox('찾기 어려운 열쇠나 정령을 누르면 그곳으로 데려다 줄게!', 200, 226, W - 400, 50, { size: 24 });
-      const items = [...[1, 2, 3].map(k => ({ label: `열쇠${k}`, obj: this.keys.find(q => q.n === k), icon: ['dokdo_icon', [160, 0, 160, 160]] })),
-        { label: '정령', obj: this.spirit, icon: null }, { label: '독도아저씨', obj: this.door, icon: [this.n >= 9 ? 'roboking' : 'daddy_small', this.n >= 9 ? [0, 0, 80, 80] : [0, 0, 82, 82]] }];
-      items.forEach((it, k) => {
-        const x = 220 + k * 172, y = 290;
-        const done = !it.obj || it.obj.got || (it.obj === this.door && this.door.open);
-        panel(x, y, 150, 170, { fill: done ? '#cfc6b6' : '#fff8ea', r: 10 });
-        if (it.icon) drawFit(img(it.icon[0]), x + 25, y + 15, 100, 100, { frame: it.icon[1] });
-        else if (d.spirit) { const info = spriteInfo(d.spirit.s); if (info?.im) drawFit(info.im, x + 25, y + 15, 100, 100); }
-        text(done ? '완료!' : it.label, x + 75, y + 126, { size: 26, align: 'center' });
-        if (!done && hit(x, y, 150, 170, L)) {
-          audio.sfx('click');
-          const o = it.obj;
-          this.p.x = o === this.door ? o.x - 1.6 * Math.sign(this.flag.x - o.x || 1) : o.x;
-          this.p.y = o.y + 1.2; this.p.vy = 0; this.p.blink = 1;
-          close();
-        }
-      });
-      if (button('닫기', W - 340, 480, 140, 56, { layer: L }) || keyHit('Escape')) close();
     } else if (m.type === 'pause') {
       panel(W / 2 - 230, 180, 460, 360);
       text('잠깐 멈춤', W / 2, 206, { size: 40, align: 'center' });

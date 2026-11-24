@@ -25,10 +25,9 @@ export class TitleScene {
     beginUI(this.notice.open ? 1 : 0);
     drawCover(img('bg1'), 0, 0, W, H);
     ctx.fillStyle = 'rgba(20,30,40,.25)'; ctx.fillRect(0, 0, W, H);
-    text('<4, 5학년 독도 교육>', W / 2, 90, { size: 36, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
     const bob = Math.sin(this.t * 2) * 6;
-    text('구해줘 독도!', W / 2, 150 + bob, { size: 120, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 14, shadow: 'rgba(0,0,0,.4)' });
-    drawFit(img('dokdo_icon'), W / 2 - 70, 300 + bob, 140, 140, { frame: [160, 0, 160, 160] });
+    text('구해줘 독도!', W / 2, 120 + bob, { size: 120, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 14, shadow: 'rgba(0,0,0,.4)' });
+    drawFit(img('dokdo_icon'), W / 2 - 70, 290 + bob, 140, 140, { frame: [160, 0, 160, 160] });
     const started = save.introSeen;
     if (button(started ? '이어서 하기' : '여기를 클릭하여 시작하세요!', W / 2 - 330, 470, 660, 96, { size: 40 })) {
       if (save.introSeen) go(nav.hub());
