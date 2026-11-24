@@ -7,7 +7,9 @@ export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', 
 const HERO_COST = [20, 120, 240, 1800, 3600];
 const HERO_PIC = [['hero_lee', ''], ['hero_leegyu', '이걸.. 찾았다네'], ['hero_ahn', ''], ['hero_hong', ''], ['hero_leegyu', '이걸.. 찾았다네']];
 export const spiritMemCost = i => (i === 8 ? 120 : 20);
-const SPIRIT_FRAMES = [0, 0, 1, 2, 7, 5, 4, 6, 3, 8]; // 정령 그림 (spirits 시트 칸 번호, 1번은 물의 정령 시트)
+const SPIRIT_FRAMES = [0, 0, 1, 2, 7, 5, 4, 6, 3, 8];
+// 그림이 오른쪽을 보고 있는 정령 (독도 강치, 괭이갈매기). 나머지는 왼쪽을 봄
+const FACES_RIGHT = new Set([6, 7]); // 정령 그림 (spirits 시트 칸 번호, 1번은 물의 정령 시트)
 
 export function spiritImage(i) {
   return i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
@@ -69,7 +71,7 @@ export class HubScene {
       if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
       w.x += w.vx * dt;
       if (w.x < 200 || w.x > 1080) { w.vx = -w.vx; w.x = Math.max(200, Math.min(1080, w.x)); }
-      if (w.vx) w.flip = w.vx > 0;
+      if (w.vx) w.flip = FACES_RIGHT.has(w.i) ? w.vx < 0 : w.vx > 0;
     }
     if (this.bubble) { this.bubble.t -= dt; if (this.bubble.t <= 0) this.bubble = null; }
   }
