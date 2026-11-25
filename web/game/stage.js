@@ -1,6 +1,6 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
 import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp } from './core.js';
-import { nav, Notice, CardReveal } from './widgets.js';
+import { nav, Notice, CardReveal, spiritSquash } from './widgets.js';
 import { generateLevel } from './levelgen.js';
 
 const U = 64;                 // 1 유닛 = 64px
@@ -16,7 +16,7 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 돌을 던진다! 돌에 맞아도 처음 장소로 돌아간다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 구겨진 종이를 던진다! 종이에 맞아도 처음 장소로 돌아간다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 function mix(a, b, f) {
   const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
@@ -256,11 +256,11 @@ export class StageScene {
         this.respawn();
       }
     }
-    // 초록 로봇이 던진 돌
+    // 초록 로봇이 던진 구겨진 종이
     for (const st of this.stones) {
       st.t += dt; st.vy -= GRAV * 0.55 * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.rot += st.vx * dt * 3;
       const b = { x: st.x - 0.16, y: st.y - 0.16, w: 0.32, h: 0.32 };
-      if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud'); this.splash.push({ x: st.x, y: st.y, t: 0.3, stone: true }); } continue; }
+      if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud'); this.splash.push({ x: st.x, y: st.y, t: 0.3, paper: true }); } continue; }
       if (p.blink <= 0 && Math.abs(st.x - p.x) < 0.38 && Math.abs(st.y - (p.y - 0.07)) < 0.45) { st.dead = true; audio.sfx('hurt'); this.respawn(); }
     }
     this.stones = this.stones.filter(s => !s.dead);
@@ -307,6 +307,16 @@ export class StageScene {
     }
     this.touch.jumpHit = jumpNow && !this.touch.jumpHeld;
     this.touch.jumpHeld = jumpNow;
+  }
+  // 구겨진 종이 뭉치 (울퉁불퉁한 흰 공 + 접힌 주름)
+  drawPaper(x, y, rot, s) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+    const pts = [[-11, -3], [-7, -10], [0, -12], [6, -9], [12, -4], [10, 5], [5, 11], [-3, 10], [-10, 6]];
+    ctx.fillStyle = '#f6f1e4'; ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#a9a294'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(-1, -1); ctx.lineTo(6, -6); ctx.moveTo(-1, -1); ctx.lineTo(-2, 8); ctx.moveTo(-1, -1); ctx.lineTo(9, 3); ctx.moveTo(-9, 3); ctx.lineTo(-4, 4); ctx.stroke();
+    ctx.restore();
   }
   throwStone(rb) {
     const p = this.p, g = GRAV * 0.55;
@@ -424,7 +434,10 @@ export class StageScene {
     for (const k of this.keys) if (!k.got) this.drawSheet('dokdo_icon', [Math.floor(this.t * 3) % 2 * 160, 0, 160, 160], k.x, k.y + Math.sin(this.t * 3 + k.n) * 0.1, 0.95);
     if (this.spirit && !this.spirit.got) {
       const s = this.spirit;
-      this.drawWorldSprite(spriteInfo(s.s), s.x, s.y + Math.sin(this.t * 2.5) * 0.12, s.sx, s.sy);
+      // 원작 정령 몸짓(가만히 있을 때)으로 살짝 납작해졌다 돌아옴 (발바닥 기준)
+      const info = spriteInfo(s.s), [qx, qy] = spiritSquash(this.t, false);
+      const hh = info ? info.h * Math.abs(s.sy) : 1;
+      this.drawWorldSprite(info, s.x, s.y - hh * (1 - qy) / 2, s.sx * qx, s.sy * qy);
       const [px, py] = this.w2s(s.x, s.y + 1);
       text('!', px, py - 20 + Math.sin(this.t * 6) * 4, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
     }
@@ -433,7 +446,7 @@ export class StageScene {
       const fr = Math.floor(rb.t * (rb.walk ? 8 : 5)) % 8;
       const frame = blue ? [fr * 81, 0, 80, 80] : [fr * 80, 0, 80, 80];
       const facingRight = rb.wind > 0 ? rb.look > 0 : rb.vx > 0;
-      if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); ctx.fillStyle = '#7d7468'; ctx.beginPath(); ctx.arc(wx, wy, 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#3a2f28'; ctx.lineWidth = 3; ctx.stroke(); }
+      if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); this.drawPaper(wx, wy, this.t * 2, 0.9); }
       this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
       if (rb.q && !rb.solved) {
         const [px, py] = this.w2s(rb.x, rb.y + 0.9);
@@ -455,10 +468,7 @@ export class StageScene {
     }
     for (const st of this.stones) {
       const [sx, sy] = this.w2s(st.x, st.y);
-      ctx.save(); ctx.translate(sx, sy); ctx.rotate(st.rot);
-      ctx.fillStyle = '#8a8076'; ctx.strokeStyle = '#2b2b2b'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-4, -10); ctx.lineTo(8, -8); ctx.lineTo(11, 3); ctx.lineTo(3, 10); ctx.lineTo(-9, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.restore();
+      this.drawPaper(sx, sy, st.rot, 1);
     }
     if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ffc4a0', dd * 0.7); ctx.fillRect(0, 0, W, H); ctx.restore(); }
     this.drawWeather();
@@ -482,7 +492,7 @@ export class StageScene {
     this.splash = this.splash.filter(s => s.t > 0);
     for (const s of this.splash) {
       const [sx, sy] = this.w2s(s.x, s.y);
-      ctx.strokeStyle = s.stone ? `rgba(90,80,70,${s.t * 3})` : `rgba(220,235,255,${s.t * 3})`; ctx.lineWidth = 2;
+      ctx.strokeStyle = s.paper ? `rgba(240,235,220,${s.t * 3})` : `rgba(220,235,255,${s.t * 3})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(sx, sy, (0.3 - s.t) * 60 + 4, (0.3 - s.t) * 14 + 2, 0, 0, Math.PI * 2); ctx.stroke();
     }
     if (wx === 'clear') return;

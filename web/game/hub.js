@@ -1,6 +1,6 @@
 // 시작 화면, 독도 마을(허브), 게임 선택 화면
 import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
-import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName } from './widgets.js';
+import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이편', '화산섬의 탄생순서', '독도와 울릉도의 거리편', '독도의 지하자원', '독도의 이름편 -1-', '독도의 이름편 -2-', '독도와 지도편', '독도의 역사편 -1-', '독도의 역사편 -2-', '독도와 일본편'];
 export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', '안용복편', '홍순칠편', '누군가가 고의로 버린 문서'];
@@ -60,7 +60,7 @@ export class HubScene {
     audio.play('quiet_forest');
     this.walkers = [];
     save.shown.forEach((on, i) => {
-      if (on) this.walkers.push({ i, x: 260 + Math.random() * 760, y: 520 + Math.random() * 80, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
+      if (on) this.walkers.push({ i, x: 270 + ((i * 0.618) % 1) * 720, y: 532 + (i % 4) * 32, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
     });
   }
   get layer() { return this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
@@ -68,11 +68,21 @@ export class HubScene {
     this.t += dt;
     this.reveal.update(dt);
     for (const w of this.walkers) {
+      if (w.touch > 0) w.touch = Math.max(0, w.touch - dt);
       w.tNext -= dt;
       if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
       w.x += w.vx * dt;
-      if (w.x < 200 || w.x > 1080) { w.vx = -w.vx; w.x = Math.max(200, Math.min(1080, w.x)); }
+      if (w.x < 260 || w.x > 1000) { w.vx = -w.vx; w.x = Math.max(260, Math.min(1000, w.x)); }   // 양옆 버튼(카드·독도 구출하러 가기)에 겹치지 않게
       if (w.vx) w.flip = w.vx < 0;   // 정령 그림은 모두 오른쪽을 보고 있음
+    }
+    // 정령끼리 너무 붙으면 서로 살짝 비켜서기 (겹쳐 보이지 않게)
+    for (const a of this.walkers) for (const b of this.walkers) {
+      if (a === b) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dx) < 78 && Math.abs(dy) < 60) { const push = (78 - Math.abs(dx)) * 0.5 * Math.min(1, dt * 6) * (dx >= 0 ? 1 : -1); a.x -= push; b.x += push; }
+    }
+    for (const w of this.walkers) {
+      w.x = Math.max(260, Math.min(1000, w.x));
     }
     if (this.bubble) { this.bubble.t -= dt; if (this.bubble.t <= 0) this.bubble = null; }
   }
@@ -96,11 +106,12 @@ export class HubScene {
     if (iconButton(img('dokdo_icon'), '독도 구출하러 가기', 1060, 400, 170, 170, { layer: 0, frame: [160, 0, 160, 160], bob: true })) go(nav.select());
 
     // 마을에 나온 정령들
-    for (const w of this.walkers) {
+    for (const w of [...this.walkers].sort((a, b) => a.y - b.y)) {
       const s = spiritImage(w.i);
-      const hop = w.vx ? Math.abs(Math.sin(this.t * 8 + w.i)) * 8 : 0;
-      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30, 8, 0, 0, Math.PI * 2); ctx.fill();
-      drawImg(s.im, w.x - 45, w.y - 50 - hop, 90, 90, { frame: s.frame, flip: w.flip });
+      // 원작처럼 몸을 늘였다 줄였다 (발바닥 기준)
+      const [sx, sy] = spiritSquash(this.t + w.i * 0.37, !!w.vx, w.touch || 0);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
+      drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
       if (hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
     }
     if (this.bubble) {
@@ -119,7 +130,7 @@ export class HubScene {
   }
   talk(w) {
     const d = game.data;
-    w.clicks++;
+    w.clicks++; w.touch = 0.25;
     let msg;
     if (w.clicks % 21 === 0 && save.easter < 6) {
       msg = d.spiritAnnoyed[save.easter];
@@ -258,7 +269,7 @@ export class HubScene {
     const s = spiritImage(i);
     panel(440, 100, 400, 280, { fill: '#2d3a45', inner: false });
     ctx.save(); if (!shown) ctx.filter = 'brightness(0.25)';
-    drawFit(s.im, 480, 110, 320, 260, { frame: s.frame });
+    { const [qx, qy] = spiritSquash(this.t, false); const bw = 260 * qx, bh = 260 * qy; drawImg(s.im, 640 - bw / 2, 370 - bh, bw, bh, { frame: s.frame }); }
     ctx.restore();
     if (!shown) drawFit(img('Lock'), 580, 180, 120, 120);
     text(`${i + 1} / 10`, 820, 108, { size: 22, align: 'right', color: '#f4e3c3' });
@@ -284,7 +295,7 @@ export class HubScene {
       onClose: k => {
         if (k !== 0) return;
         save[kind] -= cost; save.shown[i] = true; persist(); audio.sfx('good');
-        this.walkers.push({ i, x: 640, y: 560, vx: 0, tNext: 1, clicks: 0, flip: false });
+        this.walkers.push({ i, x: 640, y: 532 + (i % 4) * 32, vx: 0, tNext: 1, clicks: 0, flip: false });
       },
     });
   }

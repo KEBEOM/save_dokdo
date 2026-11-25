@@ -185,3 +185,21 @@ export class CardReveal {
     }
   }
 }
+
+// 정령 몸짓 (원작 Ac1 애니메이션: Idle·Walk·Touch 크기 곡선을 그대로 옮김)
+//   가만히: 2초마다 살짝 납작(가로 +10%, 세로 -10%) · 걸을 때: 0.5초마다 통통(가로 +30%, 세로 -30%)
+//   눌렀을 때: 0.25초 동안 쭉 늘어났다(0.8×1.4) 눌렸다(1.2×0.8) 돌아옴
+export function spiritSquash(t, walking, touchLeft = 0) {
+  if (touchLeft > 0) {
+    const k = 0.25 - touchLeft;   // 0 ~ 0.25초
+    const keys = [[0, 1, 1], [0.0333, 0.8, 1.4], [0.1667, 1.2, 0.8], [0.25, 1, 1]];
+    for (let i = 0; i < keys.length - 1; i++) {
+      const [t0, x0, y0] = keys[i], [t1, x1, y1] = keys[i + 1];
+      if (k <= t1) { const f = (k - t0) / (t1 - t0); return [x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]; }
+    }
+    return [1, 1];
+  }
+  const period = walking ? 0.5 : 2, amp = walking ? 0.3 : 0.1;
+  const f = (1 - Math.cos((t % period) / period * Math.PI * 2)) / 2;   // 0 → 1 → 0 (부드럽게)
+  return [1 + amp * f, 1 - amp * f];
+}
