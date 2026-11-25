@@ -90,8 +90,8 @@ export class StageScene {
     this.weather = n === 1 ? 'clear' : wr < 0.4 ? 'clear' : wr < 0.7 ? 'rain' : 'snow';
     this.drops = Array.from({ length: this.weather === 'rain' ? 170 : this.weather === 'snow' ? 130 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 0.8, ph: Math.random() * 6.3 }));
     this.splash = [];
-    // 하늘 구름 (하늘색과 같은 빛으로 물듦)
-    this.clouds = Array.from({ length: 7 }, (_, k) => ({ x: k * 360 + Math.random() * 200, y: 40 + Math.random() * 260, s: 0.7 + Math.random() * 0.7, v: 4 + Math.random() * 6 }));
+    const TIME_BG = ['morning', 'morning', 'day', 'day', 'day', 'sunset', 'sunset', 'dusk', 'dusk', 'night'];
+    this.bgName = 'runbg_' + (this.weather === 'rain' ? 'rain' : this.weather === 'snow' ? 'snow' : TIME_BG[n - 1]);
     // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
     for (const rb of this.robots) {
       const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
@@ -123,7 +123,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'stagebg'])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -400,32 +400,9 @@ export class StageScene {
   draw() {
     const layer = this.notice.open ? 2 : this.modal ? 1 : 0;
     beginUI(layer);
-    // 하늘과 배경: 스테이지가 오를수록 노을이 짐
+    // 배경: 스테이지가 오를수록 아침 → 한낮 → 노을 → 해질녘 → 밤 (비·눈 오는 날은 그 날씨 그림)
     const dd = this.diff;
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, mix('#7cc6f0', '#4a3a7c', dd));
-    sky.addColorStop(0.55, mix('#a9dcf3', '#e8735a', dd));
-    sky.addColorStop(1, mix('#d4eef8', '#ffc078', dd));
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-    if (dd > 0.25) {
-      // 지는 해
-      const sy = 120 + dd * 330 - clamp((this.cam.y - this.bounds.b) * 4, 0, 120);
-      const g = ctx.createRadialGradient(980, sy, 10, 980, sy, 220);
-      g.addColorStop(0, `rgba(255,236,170,${0.9 * dd})`); g.addColorStop(0.25, `rgba(255,170,90,${0.6 * dd})`); g.addColorStop(1, 'rgba(255,140,80,0)');
-      ctx.fillStyle = g; ctx.fillRect(700, sy - 230, 560, 460);
-      ctx.fillStyle = `rgba(255,224,150,${dd})`; ctx.beginPath(); ctx.arc(980, sy, 46, 0, Math.PI * 2); ctx.fill();
-    }
-    this.drawClouds(dd);
-    const bg = img('stagebg');
-    if (bg) {
-      const bw = 1600, bh = bw * bg.height / bg.width;
-      const ox = -((this.cam.x * 12) % bw + bw) % bw;
-      ctx.globalAlpha = 0.75;
-      for (let k = -1; k < 3; k++) ctx.drawImage(bg, ox + k * bw, H - bh + clamp((this.cam.y - this.bounds.b) * 6, 0, 200), bw, bh);
-      ctx.globalAlpha = 1;
-      // 노을빛으로 물들이기
-      if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ff9a70', dd * 0.85); ctx.fillRect(0, 0, W, H); ctx.restore(); }
-    }
+    this.drawBackdrop();
     for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
     // 움직이는 발판: 지나가는 길을 점선으로 보여 주고 발판은 노란 테두리로
     for (const m of this.movers) {
@@ -492,7 +469,9 @@ export class StageScene {
       const [sx, sy] = this.w2s(st.x, st.y);
       this.drawPaper(sx, sy, st.rot, 1.35);
     }
-    if (dd > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = mix('#ffffff', '#ffc4a0', dd * 0.7); ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    // 밤·해질녘에는 발판과 인물도 살짝 어둡게 물들여 배경과 어울리게
+    const tint = { dusk: 'rgba(60,50,120,.18)', night: 'rgba(20,25,70,.28)', sunset: 'rgba(255,140,90,.10)' }[this.bgName.replace('runbg_', '')];
+    if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H); }
     this.drawWeather();
     if (!this.ready) {
       ctx.fillStyle = 'rgba(27,43,54,.85)'; ctx.fillRect(0, 0, W, H);
@@ -520,7 +499,6 @@ export class StageScene {
     if (wx === 'clear') return;
     ctx.save();
     if (wx === 'rain') {
-      ctx.fillStyle = 'rgba(40,60,90,.18)'; ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = 'rgba(210,225,255,.55)'; ctx.lineWidth = 2; ctx.beginPath();
       for (const d of this.drops) {
         if (!this.busy) { d.x += -130 * d.s * dt - camDx; d.y += 900 * d.s * dt + camDy; }
@@ -536,7 +514,6 @@ export class StageScene {
         if (t && t.x > vx0 && t.x < vx1 && t.y + t.h > vy0 && t.y + t.h < vy1) this.splash.push({ x: t.x + Math.random(), y: t.y + t.h, t: 0.25 });
       }
     } else {
-      ctx.fillStyle = 'rgba(230,240,255,.12)'; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = 'rgba(255,255,255,.9)';
       for (const d of this.drops) {
         if (!this.busy) { d.ph += dt * 1.5; d.x += Math.sin(d.ph) * 30 * dt - 15 * dt - camDx * 0.9; d.y += 60 * d.s * dt + camDy * 0.9; }
@@ -547,23 +524,20 @@ export class StageScene {
     }
     ctx.restore();
   }
-  // 픽셀 구름: 원작 배경의 구름 모양을 흉내 낸 네모 조각들, 하늘 그라데이션과 같은 색감으로
-  drawClouds(dd) {
-    const base = this.weather === 'rain' ? mix('#b8c0c8', '#9a8a8e', dd) : this.weather === 'snow' ? mix('#f4f7fb', '#e8d8dc', dd) : mix('#ffffff', '#ffc2a0', dd);
-    const shade = this.weather === 'rain' ? mix('#9aa3ad', '#7a6a72', dd) : mix('#dceef8', '#f09a80', dd);
-    const shape = [[3, 0, 3, 1], [2, 1, 6, 1], [1, 2, 9, 1], [0, 3, 13, 2]];
-    const span = 7 * 360;
-    ctx.save(); ctx.globalAlpha = this.weather === 'rain' ? 0.9 : 0.85;
-    for (const c of this.clouds) {
-      const u = 10 * c.s;
-      let x = ((c.x + this.t * c.v - this.cam.x * U * 0.08) % span + span) % span - 300;
-      const y = c.y + clamp((this.cam.y - this.bounds.b) * 3, 0, 120);
-      for (const [bx, by, bw, bh] of shape) {
-        ctx.fillStyle = base; ctx.fillRect(Math.round(x + bx * u), Math.round(y + by * u), Math.round(bw * u), Math.round(bh * u));
-      }
-      ctx.fillStyle = shade; ctx.fillRect(Math.round(x), Math.round(y + 4.4 * u), Math.round(13 * u), Math.round(0.6 * u));
-    }
-    ctx.restore();
+  // 배경 그림 한 장(하늘·섬·바다·땅)을 가로로 이어 붙여 천천히 흘려 보냄
+  //   카메라가 위로 올라가면 그림이 아래로 조금씩 내려가고, 그 위는 그림 맨 위 하늘색으로 이어짐
+  drawBackdrop() {
+    const SKY_TOP = { runbg_morning: '#7ce6fa', runbg_day: '#46acfd', runbg_sunset: '#df6960', runbg_dusk: '#28274d', runbg_night: '#0a0b21', runbg_rain: '#6b86a1', runbg_snow: '#babad4' };
+    ctx.fillStyle = SKY_TOP[this.bgName] || '#7cc6f0'; ctx.fillRect(0, 0, W, H);
+    const bg = img(this.bgName);
+    if (!bg) return;
+    const bw = 1600, bh = bw * bg.height / bg.width;            // 1600 × 1067
+    const grass = bh * 0.715;                                    // 그림 속 풀밭 높이
+    const vh = H / U, lowCam = this.bounds.b - 3 + vh / 2;       // 카메라가 가장 낮을 때
+    const rise = Math.max(0, this.cam.y - lowCam);
+    const y = Math.round(H - 110 - grass + Math.min(rise * U * 0.22, 420));
+    const ox = -((this.cam.x * U * 0.12) % bw + bw) % bw;
+    for (let k = -1; k < 2; k++) ctx.drawImage(bg, Math.round(ox + k * bw), y, bw, bh);
   }
   drawMinimap() {
     const x = W - 270, y = 78, w = 250, h = 130;
@@ -636,8 +610,8 @@ export class StageScene {
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
       const info = d.spirit ? spriteInfo(d.spirit.s) : null;
       if (info?.im) drawFit(info.im, 180, 240, 200, 200);
-      textBox(d.hints[m.n - 1], 400, 196, W - 540, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
-      if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 400 + (W - 540) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
+      textBox(d.hints[m.n - 1], 410, 196, W - 590, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
+      if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 410 + (W - 590) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'msg') {
       panel(110, 210, W - 220, 260); face(m.face);
