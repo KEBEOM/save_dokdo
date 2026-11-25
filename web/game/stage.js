@@ -16,8 +16,10 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 초록 로봇 몸에 닿으면 처음 장소로!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 초록 로봇 몸에 닿으면 처음 장소로!', '갈색 로봇은 종이비행기를 던진다! 맞으면 보호막이 생겨 로봇이나 종이 뭉치에 한 번 맞아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
+// 0..n-1을 무작위 순서로
+function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function mix(a, b, f) {
   const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
   const [x, y] = [p(a), p(b)];
@@ -123,7 +125,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', this.bgName])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -231,8 +233,13 @@ export class StageScene {
         }
       }
       if (rb.hop > 0) rb.hop -= dt;
-      // 초록 로봇: 주인공이 가까우면 멈춰서 돌을 던짐
-      if (rb.green && !(rb.appear > 0)) {
+      // 갈색 로봇: 주인공에게 보호막이 있으면 던지지 않고 가만히 서 있음
+      if (rb.brown) {
+        if (p.shield) { if (rb.vx) { rb.saveVx = rb.vx; rb.vx = 0; } rb.wind = 0; rb.idle = true; }
+        else if (rb.idle) { rb.idle = false; rb.vx = rb.saveVx || rb.speed; rb.tt = 0.8; }
+      }
+      // 초록 로봇(종이 뭉치)·갈색 로봇(종이비행기): 주인공이 가까우면 멈춰서 던짐
+      if ((rb.green || (rb.brown && !p.shield)) && !(rb.appear > 0)) {
         const dx = p.x - rb.x, dy = p.y - rb.y;
         if (rb.wind > 0) {
           rb.wind -= dt; rb.look = Math.sign(dx) || 1;
@@ -255,15 +262,36 @@ export class StageScene {
       const dx = rb.x - p.x, dy = rb.y - (p.y - 0.08);
       if (dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2 && p.blink <= 0) {
         if (rb.q) { if (!rb.busy) this.openRobotQuiz(rb); return; }
-        audio.sfx('hurt');
-        this.respawn();
+        if (p.shield) {
+          // 보호막이 대신 막아 줌: 보호막만 깨지고 살짝 튕겨 나감
+          p.shield = false; p.blink = 1.2; audio.sfx('pop');
+          p.kb = 0.3; p.kbv = (Math.sign(p.x - rb.x) || 1) * 7; p.vy = Math.max(p.vy, 6);
+          this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true });
+        } else {
+          audio.sfx('hurt');
+          this.respawn();
+        }
       }
     }
     // 초록 로봇이 던진 구겨진 종이
     for (const st of this.stones) {
-      st.t += dt; st.vy -= GRAV * 0.55 * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.rot += st.vx * dt * 3;
+      st.t += dt;
+      if (st.plane) { st.x += st.vx * dt; st.y += st.vy * dt + Math.sin(st.t * 7) * 0.012; st.vy -= 0.8 * dt; }   // 종이비행기: 거의 곧게 날다 살짝 내려감
+      else { st.vy -= GRAV * 0.55 * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.rot += st.vx * dt * 3; }
       const b = { x: st.x - 0.16, y: st.y - 0.16, w: 0.32, h: 0.32 };
       if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud'); this.splash.push({ x: st.x, y: st.y, t: 0.3, paper: true }); } continue; }
+      if (st.plane) {
+        // 종이비행기에 맞으면 보호막 하나 (이미 있으면 그냥 사라짐)
+        if (Math.abs(st.x - p.x) < 0.5 && Math.abs(st.y - (p.y - 0.07)) < 0.55) {
+          st.dead = true;
+          if (!p.shield) { p.shield = true; audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }
+        }
+        continue;
+      }
+      if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48 && p.shield) {
+        // 보호막이 종이 뭉치를 막아 줌
+        st.dead = true; p.shield = false; p.paperSafe = 0.7; audio.sfx('pop'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); continue;
+      }
       if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48) {
         // 맞으면 날아온 쪽 반대로 튕겨 나감 (처음 자리로 돌아가지는 않음)
         st.dead = true; audio.sfx('bonk');
@@ -317,29 +345,66 @@ export class StageScene {
     this.touch.jumpHeld = jumpNow;
   }
   // 구겨진 종이 뭉치 (울퉁불퉁한 흰 공 + 접힌 주름)
-  // 둥그렇게 구긴 종이 뭉치: 거의 동그란 공에 꾸깃꾸깃한 테두리, 접힌 주름, 그늘
+  // 구겨진 종이 뭉치: 울퉁불퉁 불규칙한 테두리, 제멋대로 접힌 면(밝은 면·그늘진 면), 지그재그 주름, 꺾인 공책 줄
   drawPaper(x, y, rot, s) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
-    const R = 12, bumps = [1, 0.9, 1.05, 0.93, 1, 0.88, 1.04, 0.95, 1.02, 0.9, 1.06, 0.94];
+    const out = [[-12, -4], [-9, -10], [-3, -12], [1, -9], [6, -13], [11, -8], [13, -1], [10, 4], [12, 9], [5, 12], [0, 9], [-5, 13], [-10, 8], [-13, 3]];
+    const path = () => { ctx.beginPath(); out.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); };
+    path(); ctx.fillStyle = '#f2efe6'; ctx.fill();
+    ctx.save(); path(); ctx.clip();
+    // 접힌 면들 (모양·밝기가 제각각)
+    const faces = [
+      ['#ffffff', [[-12, -4], [-9, -10], [-3, -12], [-2, -5], [-7, -2]]],
+      ['#d9d3c4', [[-3, -12], [1, -9], [3, -3], [-2, -5]]],
+      ['#fbf9f3', [[1, -9], [6, -13], [11, -8], [7, -3], [3, -3]]],
+      ['#cbc4b2', [[11, -8], [13, -1], [10, 4], [7, -3]]],
+      ['#efebe1', [[3, -3], [7, -3], [10, 4], [4, 5], [0, 1]]],
+      ['#e2ddd0', [[-7, -2], [-2, -5], [3, -3], [0, 1], [-5, 3]]],
+      ['#c8c0ad', [[-13, 3], [-12, -4], [-7, -2], [-5, 3], [-9, 6]]],
+      ['#fdfcf8', [[-9, 6], [-5, 3], [0, 1], [-1, 7], [-5, 13], [-10, 8]]],
+      ['#d4cdbd', [[0, 1], [4, 5], [5, 12], [0, 9], [-1, 7]]],
+      ['#ebe6da', [[4, 5], [10, 4], [12, 9], [5, 12]]],
+    ];
+    for (const [c, pts] of faces) { ctx.fillStyle = c; ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); ctx.fill(); }
+    // 꺾인 공책 줄
+    ctx.strokeStyle = 'rgba(80,130,205,.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-14, -6); ctx.lineTo(-8, -3); ctx.lineTo(-1, -6); ctx.lineTo(5, -1); ctx.lineTo(14, -4);
+    ctx.moveTo(-14, 4); ctx.lineTo(-7, 1); ctx.lineTo(-2, 5); ctx.lineTo(6, 3); ctx.lineTo(14, 7); ctx.stroke();
+    // 주름 (접힌 선을 따라 짙게)
+    ctx.strokeStyle = 'rgba(95,85,70,.7)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    bumps.forEach((b, i) => { const a = i / bumps.length * Math.PI * 2; const px = Math.cos(a) * R * b, py = Math.sin(a) * R * b; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
-    ctx.closePath();
-    const g = ctx.createRadialGradient(-4, -5, 2, 0, 0, R + 2);
-    g.addColorStop(0, '#ffffff'); g.addColorStop(0.65, '#efe9da'); g.addColorStop(1, '#cfc6b2');
-    ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2.5; ctx.stroke();
-    // 구겨진 주름
-    ctx.strokeStyle = 'rgba(120,110,95,.8)'; ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(-8, -4); ctx.lineTo(-2, -1); ctx.lineTo(3, -7);
-    ctx.moveTo(-2, -1); ctx.lineTo(0, 5); ctx.lineTo(-5, 8);
-    ctx.moveTo(0, 5); ctx.lineTo(7, 4); ctx.lineTo(9, -2);
-    ctx.moveTo(3, -7); ctx.lineTo(7, -3);
+    ctx.moveTo(-9, -10); ctx.lineTo(-2, -5); ctx.lineTo(3, -3); ctx.lineTo(7, -3); ctx.lineTo(11, -8);
+    ctx.moveTo(-2, -5); ctx.lineTo(0, 1); ctx.lineTo(4, 5); ctx.lineTo(5, 12);
+    ctx.moveTo(-12, -4); ctx.lineTo(-7, -2); ctx.lineTo(-5, 3); ctx.lineTo(-9, 6);
+    ctx.moveTo(0, 1); ctx.lineTo(-1, 7); ctx.lineTo(-5, 13);
+    ctx.moveTo(7, -3); ctx.lineTo(10, 4);
     ctx.stroke();
+    ctx.restore();
+    path(); ctx.strokeStyle = '#555'; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.restore();
+  }
+  // 종이비행기: 흰 삼각 날개 + 가운데 접힌 선 (ang: 날아가는 방향, 화면 기준)
+  drawPlane(x, y, ang, s) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-ang); ctx.scale(s, s);
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-12, -9); ctx.lineTo(-6, 0); ctx.closePath(); ctx.fill(); ctx.stroke();   // 위 날개
+    ctx.fillStyle = '#dfe6ee';
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-12, 8); ctx.lineTo(-6, 0); ctx.closePath(); ctx.fill(); ctx.stroke();    // 아래 날개
+    ctx.fillStyle = '#c6d0dc';
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-6, 0); ctx.lineTo(-9, 4); ctx.closePath(); ctx.fill(); ctx.stroke();     // 몸통 접힘
     ctx.restore();
   }
   throwStone(rb) {
     const p = this.p, g = GRAV * 0.55;
+    if (rb.brown) {
+      // 종이비행기: 주인공 쪽으로 곧게 (조금 빗나갈 수 있음)
+      const sx = rb.x + rb.look * 0.4, sy = rb.y + 0.5;
+      const dx = p.x - sx, dy = (p.y - 0.05) - sy + (Math.random() - 0.5) * 0.4, d = Math.hypot(dx, dy) || 1, v = 6;
+      this.stones.push({ x: sx, y: sy, vx: dx / d * v, vy: dy / d * v, t: 0, rot: 0, plane: true });
+      audio.sfx('throw');
+      return;
+    }
     const tx = p.x + (Math.random() - 0.5) * 1.2 + p.vx * 0.25, ty = p.y + (Math.random() - 0.5) * 0.6;
     const sx = rb.x + rb.look * 0.3, sy = rb.y + 0.45;
     const dx = tx - sx, dy = ty - sy;
@@ -356,8 +421,8 @@ export class StageScene {
     const d = this.d;
     if (!this.keys.some(k => k.got)) { this.modal = { type: 'msg', text: d.noKeyText === '...... ....... ....... ....... .......' ? d.noKeyText : '열쇠를 얻어와라!!!!!', face: this.n >= 9 ? 'king' : 'daddy' }; this.p.x -= 0.4 * Math.sign(this.door.x - this.p.x || 1); return; }
     if (this.n === 10) { this.modal = { type: 'seq', texts: KING_GATE, face: 'king', then: () => this.openDoor() }; return; }
-    if (this.n === 9 && !this.kingMet) { this.kingMet = true; this.modal = { type: 'seq', texts: KING_MEET, face: 'king', then: () => { this.modal = { type: 'quiz', picked: null }; } }; return; }
-    this.modal = { type: 'quiz', picked: null };
+    if (this.n === 9 && !this.kingMet) { this.kingMet = true; this.modal = { type: 'seq', texts: KING_MEET, face: 'king', then: () => { this.modal = { type: 'quiz', picked: null, order: shuffled(this.d.answers.length) }; } }; return; }
+    this.modal = { type: 'quiz', picked: null, order: shuffled(this.d.answers.length) };   // 보기 순서는 열 때마다 섞음
   }
   openDoor() { this.door.open = true; audio.sfx('good'); }
   reachFlag() {
@@ -445,8 +510,8 @@ export class StageScene {
       const fr = Math.floor(rb.t * (rb.walk ? 8 : 5)) % 8;
       const frame = blue ? [fr * 81, 0, 80, 80] : [fr * 80, 0, 80, 80];
       const facingRight = rb.wind > 0 ? rb.look > 0 : rb.vx > 0;
-      if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); this.drawPaper(wx, wy, this.t * 2, 1.2); }
-      this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); if (rb.brown) this.drawPlane(wx, wy, rb.look > 0 ? -0.3 : Math.PI + 0.3, 1.1); else this.drawPaper(wx, wy, this.t * 2, 1.2); }
+      this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
       if (rb.q && !rb.solved) {
         const [px, py] = this.w2s(rb.x, rb.y + 0.9);
         if (px > -50 && px < W + 50) text('?', px, py - 16, { size: 28, align: 'center', color: '#3b8ede', stroke: '#fff', strokeW: 5 });
@@ -466,9 +531,18 @@ export class StageScene {
       const shake = p.kb > 0 ? Math.sin(this.t * 60) * 0.04 : 0;
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x + shake, p.y, 0.8 * 1.25, p.face < 0);
     }
+    if (p.shield) {
+      // 보호막: 주인공을 감싸는 하늘색 방울
+      const [bx, by] = this.w2s(p.x, p.y + 0.05), r = 40 + Math.sin(this.t * 5) * 2;
+      const g = ctx.createRadialGradient(bx - 10, by - 12, 4, bx, by, r);
+      g.addColorStop(0, 'rgba(255,255,255,.35)'); g.addColorStop(0.7, 'rgba(140,220,255,.18)'); g.addColorStop(1, 'rgba(110,200,255,.45)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,190,255,.9)'; ctx.lineWidth = 3; ctx.stroke();
+    }
     for (const st of this.stones) {
       const [sx, sy] = this.w2s(st.x, st.y);
-      this.drawPaper(sx, sy, st.rot, 1.35);
+      if (st.plane) this.drawPlane(sx, sy, Math.atan2(-st.vy, st.vx), 1.3);
+      else this.drawPaper(sx, sy, st.rot, 1.6);
     }
     // 밤·해질녘에는 발판과 인물도 살짝 어둡게 물들여 배경과 어울리게
     const tint = { dusk: 'rgba(60,50,120,.18)', night: 'rgba(20,25,70,.28)', sunset: 'rgba(255,140,90,.10)' }[this.bgName.replace('runbg_', '')];
@@ -494,8 +568,9 @@ export class StageScene {
     this.splash = this.splash.filter(s => s.t > 0);
     for (const s of this.splash) {
       const [sx, sy] = this.w2s(s.x, s.y);
-      ctx.strokeStyle = s.paper ? `rgba(240,235,220,${s.t * 3})` : `rgba(220,235,255,${s.t * 3})`; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(sx, sy, (0.3 - s.t) * 60 + 4, (0.3 - s.t) * 14 + 2, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = s.shield ? `rgba(120,220,255,${s.t * 2.5})` : s.paper ? `rgba(240,235,220,${s.t * 3})` : `rgba(220,235,255,${s.t * 3})`; ctx.lineWidth = 2;
+      const k = Math.max(0, 0.3 - Math.min(s.t, 0.3)) / 0.3, big = s.shield ? 2 : 1;
+      ctx.beginPath(); ctx.ellipse(sx, sy, (k * 18 + 4) * big, (k * 4 + 2) * big + (s.shield ? k * 20 : 0), 0, 0, Math.PI * 2); ctx.stroke();
     }
     if (wx === 'clear') return;
     ctx.save();
@@ -556,7 +631,7 @@ export class StageScene {
     ctx.fillStyle = '#e0a800';
     for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
-    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
+    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60'); else if (rb.brown) dot(rb.x, rb.y, 2.5, '#9a6a3a'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
     if (this.door) dot(this.door.x, this.door.y, 4, this.door.open ? '#999' : '#8e44ad');
@@ -585,6 +660,13 @@ export class StageScene {
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
     if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: save.rescued[this.n - 1] ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
+    if (this.p.shield) {
+      // 보호막이 있을 때 위쪽 칸 옆에 표시
+      const hx = 14 + 4 * 66, hy = 74;
+      panel(hx, hy, 58, 58, { r: 8, inner: false, fill: '#d8f1ff', lw: 3 });
+      ctx.strokeStyle = '#3aa0e0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx + 29, hy + 29, 18, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
+    }
     if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
     // 터치 버튼
@@ -633,8 +715,9 @@ export class StageScene {
       panel(130, 120, 160, 160, { fill: '#fff8ea', r: 12, inner: false });
       face(this.n >= 9 ? 'king' : 'daddy', 140, 130, 140);
       textBox(d.quiz, 320, 120, W - 450, 160, { size: 34 });
-      const answers = d.answers;
-      answers.forEach((a, k) => {
+      const answers = d.answers, order = m.order || answers.map((_, i) => i);
+      order.forEach((ai, k) => {
+        const a = answers[ai];
         const x = 130 + (k % 2) * 520, y = 320 + Math.floor(k / 2) * 140;
         if (button(a.t, x, y, 500, 116, { layer: L, size: 32 })) this.answerGate(a);
       });
@@ -653,16 +736,16 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['down'], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
-        const y = 114 + k * 55;
-        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 51);
+        const y = 112 + k * 50;
+        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 47);
         const [n, fr] = icons[k] || [];
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 9, 40, 32); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 9, 40, 32); }
         else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 143, y + 2, 50, 47); }
-        else if (n === 'down') text('▼', 168, y + 6, { size: 34, align: 'center', color: '#7a3b12' });
-        else if (n) drawFit(img(n), 143, y + 2, 50, 47, { frame: fr });
-        textBox(g, 214, y + 1, W - 360, 49, { size: 21, align: 'left' });
+        else if (n === 'down') text('▼', 168, y + 5, { size: 32, align: 'center', color: '#7a3b12' });
+        else if (n) drawFit(img(n), 145, y + 2, 46, 43, { frame: fr });
+        textBox(g, 214, y + 1, W - 360, 45, { size: 20, align: 'left' });
       });
       if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
     } else if (m.type === 'pause') {
@@ -707,6 +790,7 @@ export class RobotQuizScene {
     this.q = qs[qid] || qs[Object.keys(qs).find(k => k.split('_')[0] === String(qid).split('_')[0])];
     this.back = back; this.onSolved = onSolved;
     if (!this.q) { this.broken = true; }
+    else this.order = shuffled(this.q.choices.length);   // 정답 자리가 늘 같지 않게 보기 순서를 섞음
     this.i = 0; this.t = 0; this.state = 'intro'; this.msg = null;
     this.reveal = new CardReveal();
   }
@@ -734,9 +818,10 @@ export class RobotQuizScene {
       panel(90, 60, W - 180, 300, { fill: 'rgba(235,245,255,.97)', line: '#1f3b5a' });
       text('문제', W / 2, 80, { size: 30, align: 'center', color: '#1f3b5a' });
       textBox(this.q.question, 130, 120, W - 260, 220, { size: 38 });
-      this.q.choices.forEach((c, k) => {
+      this.order.forEach((ci, k) => {
+        const c = this.q.choices[ci];
         if (button(c, 120 + k * 360, 400, 320, 200, { size: 34, fill: '#e8f2ff', hoverFill: '#fff' })) {
-          if (k === this.q.correct) {
+          if (ci === this.q.correct) {
             audio.sfx('good');
             this.state = 'right';
             // 맞힐 때마다 보상 하나: 독도 포인트(70%) 또는 아직 없는 생물 카드(30%)

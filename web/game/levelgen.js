@@ -203,23 +203,24 @@ export function generateLevel(orig, n) {
     used.add(p);
     robots.push({ x: p.x0 + p.w - 0.8, y: p.top + 0.4, blue: true, walk: false, q, flip: false, plat: p });
   });
-  // 2) 가만히 서 있다가 자주 뛰어오르는 파란 로봇(장애물)
-  const blockers = Math.round(2 * n / 3);
-  const blockSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p)).sort((a, b) => b.w - a.w + Math.random() * 2 - 1);
-  for (let k = 0; k < Math.min(blockers, blockSpots.length); k++) {
-    const p = blockSpots[k]; used.add(p);
+  // 2) 걸어 다니는 로봇 자리: 갈색(종이비행기) → 초록(종이 뭉치) → 빨간 순서로 꼭 필요한 만큼 먼저
+  const walkSpots = path.filter(p => p.w >= (n >= 4 ? 2 : 3) && p.kind !== 'ledge' && p.kind !== 'climb' && free(p)).sort((a, b) => b.w - a.w + Math.random() * 2 - 1);
+  const addWalker = (p, extra) => { used.add(p); robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n, plat: p, ...extra }); };
+  const brownCount = n >= 3 ? 1 + Math.floor(n / 4) : 0;     // 3스테이지부터
+  const greenCount = n >= 2 ? 1 + Math.floor(n / 3) : 0;     // 2스테이지부터
+  let wi = 0;
+  for (let k = 0; k < brownCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { brown: true, speed: 0.8 });
+  for (let k = 0; k < greenCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { green: true, speed: 0.9 + 0.08 * n });
+  // 3) 남은 자리: 빨간 로봇과 가만히 서서 뛰어오르는 파란 로봇(장애물)이 나눠 씀
+  const leftover = path.filter(p => p.w >= 2 && p.kind !== "ledge" && p.kind !== "climb" && p.kind !== "pillar" && free(p)).sort(() => Math.random() - 0.5);
+  const blockers = Math.min(Math.round(2 * n / 3), Math.floor(leftover.length * 0.35));
+  for (let k = 0; k < blockers; k++) {
+    const p = leftover[k]; used.add(p);
     robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true, plat: p });
   }
-  // 3) 빨간 로봇(걸어 다님): 예전보다 약 두 배 많고 빠르게
-  const roomy = path.filter(p => p.w >= (n >= 4 ? 2 : 3) && p.kind !== 'ledge' && p.kind !== 'climb' && free(p)).sort(() => Math.random() - 0.5);
-  const redCount = Math.min(roomy.length, 2 + Math.round(2.2 * n));
-  for (let k = 0; k < redCount; k++) {
-    const p = roomy[k]; used.add(p);
-    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n, plat: p });
-  }
-  // 4) 빨간 로봇 몇 마리는 돌을 던지는 초록 로봇으로 (2스테이지부터, 넓은 발판 위)
-  const greenCount = n >= 2 ? 1 + Math.floor(n / 3) : 0;
-  robots.filter(r => r.walk).sort((a, b) => b.plat.w - a.plat.w).slice(0, greenCount).forEach(r => { r.green = true; r.speed = 0.9 + 0.08 * n; });
+  const redTarget = 2 + Math.round(2.2 * n);
+  for (const p of walkSpots.slice(wi)) { if (robots.filter(r => r.walk && !r.green && !r.brown).length >= redTarget) break; if (free(p)) addWalker(p, {}); }
+
 
   const doorX = end.x0 + 3, flagX = end.x0 + end.w - 2;
   const door = { ...orig.door, x: doorX, y: end.top + 0.93, box: [doorX - 0.566, end.top, 1.132, 80] };
