@@ -1,5 +1,5 @@
 // 여러 화면에서 함께 쓰는 UI 조각: 포인트 표시, 알림 상자, 긴 글 읽기 창
-import { W, H, ctx, img, drawFit, panel, text, textBox, button, wrap, font, input, hit, inside, save, fmt, dim, rrect, keyHit, ui, audio } from './core.js';
+import { W, H, ctx, img, drawFit, panel, text, textBox, button, wrap, font, input, hit, inside, save, fmt, dim, rrect, keyHit, ui, audio, opaqueBox } from './core.js';
 
 export const nav = {}; // main.js가 화면 이동 함수를 채워 넣음
 
@@ -122,16 +122,21 @@ export class Reader {
 export function iconButton(im, label, x, y, w, h, opts = {}) {
   const hov = inside(input.x, input.y, x, y, w, h) && !input.touch && (opts.layer || 0) === ui.top;
   const bob = opts.bob ? Math.sin(performance.now() / 300 + x) * 4 : 0;
-  if (opts.shadow !== false) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + 4, w * 0.35, 9, 0, 0, Math.PI * 2); ctx.fill(); }
-  drawFit(im, x - (hov ? 4 : 0), y + bob - (hov ? 6 : 0), w + (hov ? 8 : 0), h + (hov ? 8 : 0), { frame: opts.frame });
+  // 그림이 실제로 차지하는 곳 (투명한 여백 빼고) → 그림자와 이름표를 발끝에 붙임
+  const iw = im ? (opts.frame ? opts.frame[2] : im.width) : 1, ih = im ? (opts.frame ? opts.frame[3] : im.height) : 1;
+  const sc = Math.min(w / iw, h / ih), dw = iw * sc, dh = ih * sc, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+  const ob = opaqueBox(im, opts.frame);
+  const feet = dy + ob[3] * dh, left = dx + ob[0] * dw, right = dx + ob[2] * dw;
+  if (opts.shadow !== false) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse((left + right) / 2, feet - 2, Math.max(24, (right - left) * 0.48), 9, 0, 0, Math.PI * 2); ctx.fill(); }
+  drawFit(im, x - (hov ? 4 : 0), y + bob - (hov ? 6 : 0), w + (hov ? 8 : 0), h + (hov ? 8 : 0), { frame: opts.frame, flip: opts.flip });
   if (label) {
     ctx.font = font(24);
     const tw = Math.max(ctx.measureText(label).width + 28, 120);
-    panel(x + w / 2 - tw / 2, y + h + 12, tw, 40, { r: 8, fill: hov ? '#fff2d6' : '#f4e3c3', inner: false, lw: 3 });
-    text(label, x + w / 2, y + h + 19, { size: 24, align: 'center' });
+    panel(x + w / 2 - tw / 2, feet + 12, tw, 40, { r: 8, fill: hov ? '#fff2d6' : '#f4e3c3', inner: false, lw: 3 });
+    text(label, x + w / 2, feet + 19, { size: 24, align: 'center' });
   }
   if (hov) ui.cursor = 'pointer';
-  return hit(x, y, w, h + (label ? 56 : 0), opts.layer || 0);
+  return hit(left - 10, dy + ob[1] * dh - 10, right - left + 20, feet - (dy + ob[1] * dh) + 20 + (label ? 56 : 0), opts.layer || 0);
 }
 
 // 카드 그림 찾기 (생물 사진은 cr_, 나머지는 스프라이트)

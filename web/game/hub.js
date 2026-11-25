@@ -60,7 +60,7 @@ export class HubScene {
     audio.play('quiet_forest');
     this.walkers = [];
     save.shown.forEach((on, i) => {
-      if (on) this.walkers.push({ i, x: 270 + ((i * 0.618) % 1) * 720, y: 532 + (i % 4) * 32, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
+      if (on) this.walkers.push({ i, x: 270 + ((i * 0.618) % 1) * 720, y: 572 + (i % 4) * 28, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
     });
   }
   get layer() { return this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
@@ -93,15 +93,15 @@ export class HubScene {
     drawPoints(20, 20, ['dp'], { w: 220 });
 
     // 독도 석상
-    if (iconButton(img('statue'), '독도 석상', 530, 180, 220, 220, { layer: 0 })) this.panel = 'memories';
-    text('퍼즐을 열고 독도에 대하여 알아봅시다', 640, 460, { size: 20, align: 'center', color: '#fff', stroke: 'rgba(0,0,0,.6)', strokeW: 4 });
+    if (iconButton(img('statue'), '독도 석상', 420, 22, 440, 440, { layer: 0 })) this.panel = 'memories';   // 예전의 2배 크기
+    text('퍼즐을 열고 독도에 대하여 알아봅시다', 640, 504, { size: 20, align: 'center', color: '#fff', stroke: 'rgba(0,0,0,.6)', strokeW: 4 });
     // 정령 구출
     if (iconButton(img('water_icon'), '정령 구출하기', 290, 150, 130, 130, { layer: 0, frame: [Math.floor(this.t * 4) % 6 * 160, 0, 160, 160], bob: true })) { this.panel = 'spirits'; this.page = 0; }
     // 카드
     if (iconButton(img('card_icon'), '독도 캐릭터 카드', 60, 250, 140, 140, { layer: 0, frame: [0, 0, 162, 162] })) this.panel = 'character';
     if (iconButton(img('card_icon'), '독도 생물 카드', 60, 450, 140, 140, { layer: 0, frame: [162, 0, 162, 162] })) this.panel = 'creature';
     // 독도아저씨 (도움말)
-    if (iconButton(img('daddy_small'), '독도 아저씨', 1080, 150, 130, 130, { layer: 0, frame: [Math.floor(this.t * 2) % 2 * 82, 0, 82, 82] })) this.panel = 'help';
+    if (iconButton(img('daddy_small'), '독도 아저씨', 1080, 150, 130, 130, { layer: 0, frame: [Math.floor(this.t * 2) % 2 * 82, 0, 82, 82], flip: true })) this.panel = 'help';   // 그림은 오른쪽을 봐서 뒤집어 왼쪽(마을 쪽)을 보게
     // 독도 구출하러 가기
     if (iconButton(img('dokdo_icon'), '독도 구출하러 가기', 1060, 400, 170, 170, { layer: 0, frame: [160, 0, 160, 160], bob: true })) go(nav.select());
 
@@ -298,7 +298,7 @@ export class HubScene {
       onClose: k => {
         if (k !== 0) return;
         save[kind] -= cost; save.shown[i] = true; persist(); audio.sfx('good');
-        this.walkers.push({ i, x: 640, y: 532 + (i % 4) * 32, vx: 0, tNext: 1, clicks: 0, flip: false });
+        this.walkers.push({ i, x: 640, y: 572 + (i % 4) * 28, vx: 0, tNext: 1, clicks: 0, flip: false });
       },
     });
   }

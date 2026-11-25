@@ -136,6 +136,25 @@ export function preload(names) {
     e.im.addEventListener('error', res, { once: true });
   })));
 }
+// 그림에서 실제로 칠해진 부분의 범위 (투명한 여백 빼고) → [왼, 위, 오른, 아래] 비율. 한 번 재면 기억해 둠
+const boxCache = new Map();
+export function opaqueBox(im, frame) {
+  if (!im || !im.width) return [0, 0, 1, 1];
+  const key = (im.src || '') + '|' + (frame || []).join(',');
+  let b = boxCache.get(key);
+  if (b) return b;
+  const [fx, fy, fw, fh] = frame || [0, 0, im.width, im.height];
+  const c = document.createElement('canvas'); c.width = fw; c.height = fh;
+  const g = c.getContext('2d'); g.drawImage(im, fx, fy, fw, fh, 0, 0, fw, fh);
+  let x0 = fw, y0 = fh, x1 = 0, y1 = 0;
+  try {
+    const d = g.getImageData(0, 0, fw, fh).data;
+    for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) if (d[(y * fw + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  } catch (_) { x0 = 0; y0 = 0; x1 = fw - 1; y1 = fh - 1; }
+  b = x1 >= x0 ? [x0 / fw, y0 / fh, (x1 + 1) / fw, (y1 + 1) / fh] : [0, 0, 1, 1];
+  boxCache.set(key, b);
+  return b;
+}
 // 그림 모양 그대로 한 가지 색으로 칠한 그림자 (원작에서 아직 얻지 못한 열쇠·정령을 검정으로 가린 방식)
 // 캔버스 필터를 쓰지 않아 아이폰 사파리에서도 똑같이 보임
 const shadeCache = new Map();
