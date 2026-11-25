@@ -855,12 +855,18 @@ export class RobotQuizScene {
             }
             // 카드 뽑기처럼: 뒷면 카드를 눌러야 무엇이 나왔는지 보임
             this.onSolved?.();
-          } else { audio.sfx('bad'); this.state = 'wrong'; this.msg = this.q.wrong[Math.floor(Math.random() * this.q.wrong.length)]; }
+          } else {
+            // 틀리면: 웃으면서 정답을 알려 주고 끝 (보상 없음, 이 로봇은 이번 판에서 다시 문제를 내지 않음)
+            audio.sfx('bad'); this.state = 'wrong';
+            const ans = String(this.q.choices[this.q.correct]).replace(/\s*\n\s*/g, ' ');
+            this.msg = `하.하.하.하.하.\n정답은 '${ans}' 이.다.`;
+            this.onSolved?.();
+          }
         }
       });
     } else if (this.state === 'wrong') {
       robot(this.msg);
-      if (button('다시 풀기', W - 360, 598, 220, 60) || keyHit('Enter', 'Space')) this.state = 'question';
+      if (button('돌아가기', W - 360, 598, 220, 60) || keyHit('Enter', 'Space')) go(this.back);
     } else if (this.state === 'right') {
       if (!this.reveal.open) robot(this.q.right);
       if (!this.reveal.open && (button('돌아가기', W - 360, 598, 220, 60) || keyHit('Enter', 'Space'))) go(this.back);
