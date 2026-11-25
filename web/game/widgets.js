@@ -144,7 +144,7 @@ export class CardReveal {
       ctx.shadowColor = `rgba(255,230,120,${glow})`; ctx.shadowBlur = 40;
       drawFit(img('cardback'), -cw / 2, -ch / 2, cw, ch);
       ctx.restore();
-      text(`${it.kind || '카드'}를 얻었다!`, cx, 470, { size: 40, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
+      text(it.kind === '보상' ? '보상을 얻었다!' : `${it.kind || '카드'}를 얻었다!`, cx, 470, { size: 40, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 8 });
       if (Math.floor(t * 2) % 2 === 0) text('카드를 눌러서 열어 보세요!', cx, 530, { size: 30, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
       if (hit(cx - cw / 2, cy - ch / 2, cw, ch, layer) || hit(0, 0, W, H, layer) || keyHit('Enter', 'Space')) {
         it.phase = 'flip'; it.t = 0; audio.sfx('flip');
@@ -167,7 +167,13 @@ export class CardReveal {
     const pop = it.phase === 'open' ? 1 + 0.12 * Math.max(0, 1 - t * 4) : 1;
     ctx.save(); ctx.translate(cx, cy); ctx.scale(sx * pop, pop);
     if (!front) drawFit(img('cardback'), -cw / 2, -ch / 2, cw, ch);
-    else {
+    else if (it.points) {
+      // 독도 포인트 보상: 빈 카드 위에 큰 독도 포인트 그림
+      const pw = cw * 0.64, ph = ch * 0.92;
+      panel(-pw / 2, -ph / 2, pw, ph, { r: 14, fill: '#fff1b8', line: '#3a2f28' });
+      drawFit(img('dp'), -pw * 0.36, -ph * 0.4, pw * 0.72, pw * 0.72);
+      text(`+${it.points}`, 0, ph * 0.16, { size: 48, align: 'center', color: '#c0392b', stroke: '#fff', strokeW: 6 });
+    } else {
       drawFit(img(FRAME_IMG[it.frame] || 'card_normal'), -cw / 2, -ch / 2, cw, ch);
       drawFit(img(cardPicName(it.pic)), -cw * 0.3, -ch * 0.32, cw * 0.6, ch * 0.6);
     }

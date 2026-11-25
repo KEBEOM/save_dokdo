@@ -742,18 +742,21 @@ export class RobotQuizScene {
           if (k === this.q.correct) {
             audio.sfx('good');
             this.state = 'right';
-            // 맞힐 때마다 독도 포인트 +5, 생물 카드는 아직 없는 카드 중에서 랜덤 (다 모았으면 포인트 +5 더)
+            // 맞힐 때마다 보상 하나: 독도 포인트(70%) 또는 아직 없는 생물 카드(30%)
+            //   카드를 다 모았으면 항상 독도 포인트
             save.robotQ[this.q.flag] = true;
             const cards = game.data.hub.creatureCards;
             const missing = cards.map((c, i) => i).filter(i => !save.creature[i]);
-            const fresh = missing.length > 0;
-            const ci = fresh ? missing[Math.floor(Math.random() * missing.length)] : Math.floor(Math.random() * cards.length);
-            save.creature[ci] = true;
-            save.dp += fresh ? 5 : 10;
-            persist();
-            const card = cards[ci];
-            // 카드 뽑기처럼: 뒷면 카드를 눌러야 무슨 카드인지 나옴
-            this.reveal.show({ pic: card.pic, frame: card.frame, kind: '생물 카드', name: card.quote, extra: fresh ? '새 카드! · 독도 포인트 +5' : '이미 모은 카드 · 독도 포인트 +10' });
+            if (missing.length && Math.random() < 0.3) {
+              const ci = missing[Math.floor(Math.random() * missing.length)], card = cards[ci];
+              save.creature[ci] = true; persist();
+              this.reveal.show({ pic: card.pic, frame: card.frame, kind: '보상', name: card.quote, extra: '새 생물 카드!' });
+            } else {
+              const pts = 10;
+              save.dp += pts; persist();
+              this.reveal.show({ points: pts, kind: '보상', name: `독도 포인트 +${pts}`, extra: '독도 석상에서 퍼즐을 열 수 있어요' });
+            }
+            // 카드 뽑기처럼: 뒷면 카드를 눌러야 무엇이 나왔는지 보임
             this.onSolved?.();
           } else { audio.sfx('bad'); this.state = 'wrong'; this.msg = this.q.wrong[Math.floor(Math.random() * this.q.wrong.length)]; }
         }
