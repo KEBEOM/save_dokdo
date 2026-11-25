@@ -356,16 +356,29 @@ export const audio = {
     if (this.music) { if (this.muted) this.music.pause(); else this.music.play().catch(() => {}); }
   },
   // 간단한 효과음 (파일 없이 소리 합성)
-  sfx(kind) {
+  // 효과음 (파일 없이 소리 합성). opts.vol: 0~1 크기 배율(거리에 따라), opts.pan: -1(왼쪽) ~ 1(오른쪽)
+  sfx(kind, opts = {}) {
     if (this.muted || !this.ctx || this.sfxVol <= 0) return;
-    const sv = this.sfxVol * 1.25;   // 효과음 크기
+    const sv = this.sfxVol * 1.25 * (opts.vol ?? 1);   // 효과음 크기
+    if (sv < 0.01) return;
     const c = this.ctx, t = c.currentTime;
+    // 소리가 나갈 길: 왼쪽·오른쪽 위치가 있으면 그쪽에서 들리게
+    let out = c.destination;
+    if (opts.pan && c.createStereoPanner) { const pn = c.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); pn.connect(c.destination); out = pn; }
     const tone = (freq, dur, type = 'square', vol = 0.08, when = 0, slide = 0) => {
       const o = c.createOscillator(), g = c.createGain();
       o.type = type; o.frequency.setValueAtTime(freq, t + when);
-      if (slide) o.frequency.linearRampToValueAtTime(freq + slide, t + when + dur);
+      if (slide) o.frequency.linearRampToValueAtTime(Math.max(20, freq + slide), t + when + dur);
       g.gain.setValueAtTime(vol * sv, t + when); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur);
-      o.connect(g); g.connect(c.destination); o.start(t + when); o.stop(t + when + dur + 0.02);
+      o.connect(g); g.connect(out); o.start(t + when); o.stop(t + when + dur + 0.02);
+    };
+    // 지지직·바스락 같은 잡음 (종이 소리)
+    const noise = (dur, vol = 0.1, when = 0, freq = 2500, q = 1.2) => {
+      if (!this.noiseBuf) { const n = c.sampleRate; this.noiseBuf = c.createBuffer(1, n, n); const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+      const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = this.noiseBuf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+      g.gain.setValueAtTime(vol * sv, t + when); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur);
+      src.connect(f); f.connect(g); g.connect(out); src.start(t + when, Math.random() * 0.5); src.stop(t + when + dur + 0.02);
     };
     switch (kind) {
       case 'click': tone(660, 0.06, 'square', 0.04); break;
@@ -377,11 +390,20 @@ export const audio = {
       case 'hurt': tone(300, 0.2, 'square', 0.06, 0, -200); break;
       case 'flip': tone(520, 0.05, 'triangle', 0.06); break;
       case 'reveal': [784, 988, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.18, 'triangle', 0.07, i * 0.06)); tone(2093, 0.4, 'sine', 0.05, 0.32); break;
-      case 'bonk': tone(520, 0.08, 'triangle', 0.07, 0, -260); tone(300, 0.1, 'square', 0.03, 0.05, -100); break;
-      case 'shield': [523, 784, 1046].forEach((f, i) => tone(f, 0.16, 'sine', 0.07, i * 0.07)); break;
-      case 'pop': tone(900, 0.06, 'square', 0.05, 0, -500); tone(400, 0.12, 'triangle', 0.05, 0.05, -200); break;
-      case 'throw': tone(240, 0.12, 'triangle', 0.06, 0, 260); break;
-      case 'thud': tone(900, 0.05, 'sawtooth', 0.025, 0, -500); tone(600, 0.06, 'sawtooth', 0.02, 0.04, -300); break;   // 종이 바스락
+      // 종이 뭉치에 맞음: 바스락 구겨지는 소리 + 퉁
+      case 'bonk': noise(0.07, 0.35, 0, 3200, 0.8); noise(0.06, 0.28, 0.06, 2200, 0.8); noise(0.08, 0.22, 0.12, 4200, 1); tone(180, 0.12, 'triangle', 0.09, 0, -60); break;
+      // 보호막 생김: 반짝반짝 올라가는 소리 + 웅 하는 막
+      case 'shield': [784, 1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0.22, 'sine', 0.06, i * 0.05)); tone(392, 0.45, 'triangle', 0.05, 0, 196); noise(0.3, 0.05, 0.05, 6000, 2); break;
+      case 'pop': tone(900, 0.06, 'square', 0.05, 0, -500); tone(400, 0.12, 'triangle', 0.05, 0.05, -200); noise(0.1, 0.12, 0, 5000, 1.5); break;
+      case 'throw': tone(240, 0.12, 'triangle', 0.06, 0, 260); noise(0.1, 0.06, 0, 1500, 0.7); break;
+      case 'plane': noise(0.35, 0.05, 0, 1800, 3); tone(500, 0.3, 'sine', 0.03, 0, 300); break;              // 종이비행기 휙
+      case 'thud': noise(0.06, 0.2, 0, 2800, 0.9); noise(0.05, 0.15, 0.05, 1800, 0.9); break;                  // 종이 바스락 (떨어짐)
+      // 로봇 소리 (가까울수록 크게)
+      case 'robo_red': [880, 1320, 880, 1320].forEach((f, i) => tone(f, 0.045, 'square', 0.035, i * 0.05)); break;   // 삐리릭
+      case 'robo_green': tone(150, 0.28, 'sawtooth', 0.04, 0, 60); tone(300, 0.12, 'square', 0.02, 0.18); break;      // 부르릉
+      case 'robo_brown': tone(600, 0.16, 'triangle', 0.045, 0, 350); tone(950, 0.1, 'triangle', 0.03, 0.17, -200); break; // 휘리릭 (휘파람)
+      case 'robo_blue': tone(700, 0.08, 'sine', 0.05); tone(1050, 0.12, 'sine', 0.04, 0.09); break;                  // 띠-띠
+      case 'boing': tone(260, 0.22, 'triangle', 0.07, 0, 420); break;                                              // 파란 로봇이 뜀
       case 'buy': [659, 880, 1318].forEach((f, i) => tone(f, 0.1, 'square', 0.05, i * 0.06)); break;
     }
   },

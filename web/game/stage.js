@@ -238,10 +238,16 @@ export class StageScene {
         rb.jt -= dt;
         if (rb.jt <= 0) {
           rb.jt = 0.45 + Math.random() * 0.9;                       // 예전보다 약 2배 자주
-          if (Math.random() < Math.min(0.92, 0.6 + 0.035 * this.n)) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; }
+          if (Math.random() < Math.min(0.92, 0.6 + 0.035 * this.n)) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; audio.sfx('boing', this.near(rb.x, rb.y)); }
         }
       }
       if (rb.hop > 0) rb.hop -= dt;
+      // 로봇 소리: 종류마다 다른 소리를 가끔 냄 (가까우면 크게, 멀면 작게)
+      rb.beep = (rb.beep ?? Math.random() * 2.5) - dt;
+      if (rb.beep <= 0) {
+        rb.beep = 1.4 + Math.random() * 1.6;
+        if (!rb.solved && !(rb.appear > 0)) { const sp = this.near(rb.x, rb.y); if (sp.vol > 0.03) audio.sfx(rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : rb.blue ? 'robo_blue' : 'robo_red', sp); }
+      }
       // 갈색 로봇: 주인공에게 보호막이 있으면 던지지 않고 가만히 서 있음
       if (rb.brown) {
         if (p.shields.includes(rb.i)) { if (rb.vx) { rb.saveVx = rb.vx; rb.vx = 0; } rb.wind = 0; rb.idle = true; }   // 자기가 준 보호막이 남아 있는 동안만 쉼
@@ -288,7 +294,7 @@ export class StageScene {
       if (st.plane) { st.x += st.vx * dt; st.y += st.vy * dt + Math.sin(st.t * 7) * 0.012; st.vy -= 0.8 * dt; }   // 종이비행기: 거의 곧게 날다 살짝 내려감
       else { st.vy -= GRAV * 0.55 * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.rot += st.vx * dt * 3; }
       const b = { x: st.x - 0.16, y: st.y - 0.16, w: 0.32, h: 0.32 };
-      if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud'); this.splash.push({ x: st.x, y: st.y, t: 0.3, paper: true }); } continue; }
+      if (this.collide(b, this.solids) || this.collide(b, this.movers) || st.y < this.bounds.b - 6 || st.t > 4) { st.dead = true; if (st.t < 4) { audio.sfx('thud', this.near(st.x, st.y)); this.splash.push({ x: st.x, y: st.y, t: 0.3, paper: true }); } continue; }
       if (st.plane) {
         // 종이비행기에 맞으면 보호막 하나 (이미 있으면 그냥 사라짐)
         if (Math.abs(st.x - p.x) < 0.5 && Math.abs(st.y - (p.y - 0.07)) < 0.55) {
@@ -404,6 +410,11 @@ export class StageScene {
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-6, 0); ctx.lineTo(-9, 4); ctx.closePath(); ctx.fill(); ctx.stroke();     // 몸통 접힘
     ctx.restore();
   }
+  // 소리 위치: 주인공과 가까울수록 크게(13칸 넘으면 안 들림), 왼쪽·오른쪽에서 들리게
+  near(x, y) {
+    const p = this.p, d = Math.hypot(x - p.x, (y - p.y) * 1.3);
+    return { vol: Math.pow(Math.max(0, 1 - d / 13), 1.3), pan: Math.max(-1, Math.min(1, (x - p.x) / 9)) };
+  }
   throwStone(rb) {
     const p = this.p, g = GRAV * 0.55;
     if (rb.brown) {
@@ -411,7 +422,7 @@ export class StageScene {
       const sx = rb.x + rb.look * 0.4, sy = rb.y + 0.5;
       const dx = p.x - sx, dy = (p.y - 0.05) - sy + (Math.random() - 0.5) * 0.4, d = Math.hypot(dx, dy) || 1, v = 6;
       this.stones.push({ x: sx, y: sy, vx: dx / d * v, vy: dy / d * v, t: 0, rot: 0, plane: true, from: rb.i });
-      audio.sfx('throw');
+      audio.sfx('plane', this.near(rb.x, rb.y));
       return;
     }
     const tx = p.x + (Math.random() - 0.5) * 1.2 + p.vx * 0.25, ty = p.y + (Math.random() - 0.5) * 0.6;
@@ -419,7 +430,7 @@ export class StageScene {
     const dx = tx - sx, dy = ty - sy;
     const T = clamp(Math.abs(dx) / 7, 0.55, 1.3);
     this.stones.push({ x: sx, y: sy, vx: dx / T, vy: (dy + 0.5 * g * T * T) / T, t: 0, rot: 0 });
-    audio.sfx('throw');
+    audio.sfx('throw', this.near(rb.x, rb.y));
   }
   respawn() {
     const p = this.p; p.kb = 0;   // 보호막(p.shields)은 떨어져서 다시 시작해도 그대로 남음 (스테이지를 나가면 새 판이라 없어짐)
