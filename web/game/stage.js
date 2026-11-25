@@ -701,17 +701,22 @@ export class StageScene {
 // ================================================================ 파란 로봇 퀴즈
 export class RobotQuizScene {
   constructor(qid, back, onSolved) {
-    this.q = game.data.robotQuestions[qid]; this.back = back; this.onSolved = onSolved;
+    // 문제 이름이 어긋나도 번호(Q23 등)로 찾아가기 (원작 9스테이지에 'Q23_Stage8'로 잘못 적힌 로봇이 있었음)
+    const qs = game.data.robotQuestions;
+    this.q = qs[qid] || qs[Object.keys(qs).find(k => k.split('_')[0] === String(qid).split('_')[0])];
+    this.back = back; this.onSolved = onSolved;
+    if (!this.q) { this.broken = true; }
     this.i = 0; this.t = 0; this.state = 'intro'; this.msg = null;
     this.reveal = new CardReveal();
   }
-  enter() { audio.play('roboking_battle'); }
+  enter() { if (this.broken) { go(this.back); return; } audio.play('roboking_battle'); }
   update(dt) {
     this.t += dt;
     this.reveal.update(dt);
     if (this.state === 'intro' && this.t > 3.2) { this.t = 0; if (++this.i >= this.q.intro.length) this.state = 'question'; }
   }
   draw() {
+    if (this.broken) return;
     const L = this.reveal.open ? 1 : 0;
     beginUI(L);
     drawCover(img('bg19'), 0, 0, W, H);

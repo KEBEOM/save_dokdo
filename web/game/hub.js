@@ -234,7 +234,7 @@ export class HubScene {
     if (kind === 'spirit') {
       if (save.spiritMem[i]) {
         const s = spiritImage(i);
-        this.reader.show({ title: `정령들과의 추억 ${i + 1} · ${SPIRIT_TITLES[i]}`, text: d.spiritPuzzleTexts[i], image: i === 0 ? 'water_mob' : 'spirits', frame: s.frame, caption: d.hub.spiritNames[i] });
+        this.reader.show({ sub: `정령들과의 추억 ${i + 1}`, name: SPIRIT_TITLES[i], text: d.spiritPuzzleTexts[i], image: i === 0 ? 'water_mob' : 'spirits', frame: s.frame, caption: d.hub.spiritNames[i] });
       } else if (!save.cleared[i]) {
         this.notice.push(`${i + 1}스테이지를 클리어해야\n${i + 1}번 퍼즐을 열 수 있어요.`, { title: '구해줘 독도정령!' });
       } else {
@@ -248,7 +248,7 @@ export class HubScene {
     } else {
       if (save.heroMem[i]) {
         const [pic, cap] = HERO_PIC[i];
-        this.reader.show({ title: `영웅들과의 추억 ${i + 1} · ${HERO_TITLES[i]}`, text: d.heroTexts[i], image: pic, caption: cap });
+        this.reader.show({ sub: `영웅들과의 추억 ${i + 1}`, name: HERO_TITLES[i], text: d.heroTexts[i], image: pic, caption: cap });
       } else {
         const cost = HERO_COST[i];
         if (save.dp < cost) this.notice.push(`${i + 1}번 퍼즐은 독도 포인트가 ${fmt(cost)}점 필요합니다.\n게임 난이도가 높을 수록 높은 점수를 받을 수 있습니다.`, { face: 'dp' });
@@ -280,11 +280,14 @@ export class HubScene {
       text('구출 성공!', 640, 502, { size: 32, align: 'center' });
     } else {
       const c1 = spiritShowCost(i);
-      if (button(`${fmt(c1)} 포인트로 구출`, 440, 484, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
+      if (!save.rescued[i]) {
+        // 달리기에서 먼저 구해야 마을로 데려올 수 있음
+        if (button(`${i + 1}스테이지에서 먼저 구출하기`, 440, 484, 400, 70, { layer: L, size: 26, fill: '#cfc6b6' })) this.notice.push(`${d.spiritNames[i]}은(는) 아직 ${i + 1}스테이지에 갇혀 있어요.\n달리고 구하고 풀어라!에서 먼저 구출하면\n마을로 데려올 수 있어요.`, { title: '아직 구출하지 못했어요' });
+      } else if (button(`${fmt(c1)} 포인트로 구출`, 440, 484, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
     }
     if (button('◀', 270, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
     if (button('▶', 930, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowRight') && L === ui.top)) this.page = (i + 1) % 10;
-    textBox('포인트를 주고 정령을 풀어줄 수 있어요. 풀어준 정령은 마을에 나와 이야기를 들려줘요!', 280, 584, 560, 64, { size: 20, align: 'left', color: '#5a4a3a' });
+    textBox('스테이지에서 구출한 정령은 포인트를 주고 마을로 데려올 수 있어요. 마을에 나온 정령은 이야기를 들려줘요!', 280, 584, 560, 64, { size: 20, align: 'left', color: '#5a4a3a' });
     if (button('닫기', 870, 588, 140, 56, { layer: L })) this.panel = null;
   }
   buySpirit(i, kind, cost) {
@@ -324,7 +327,7 @@ export class HubScene {
       else { ctx.save(); ctx.globalAlpha = 0.6; drawFit(img('Lock'), cx + cw * 0.3, cy + (ch - 26) * 0.25, cw * 0.4, (ch - 26) * 0.4); ctx.restore(); }
       text(owned[i] ? (isChar ? c.title.split(' [')[0] : c.quote) : String(i + 1), cx + cw / 2, cy + ch - 24, { size: isChar ? 20 : 18, align: 'center' });
       if (hit(cx, cy, cw, ch, L)) {
-        if (owned[i]) this.reader.show({ title: isChar ? c.title : `${c.quote} · ${c.title}`, text: (isChar ? c.quote + '\n\n' : '') + c.desc, image: cardPicName(c.pic) });
+        if (owned[i]) this.reader.show(isChar ? { sub: '독도 캐릭터 카드 ' + (c.title.match(/\[.*\]/)?.[0] || ''), name: c.title.split(' [')[0], quote: c.quote, text: c.desc, image: cardPicName(c.pic) } : { sub: '독도 생물 카드 · ' + c.title, name: c.quote, text: c.desc, image: cardPicName(c.pic) });
         else if (save[cur] < price) this.notice.push(`독도 포인트가 ${fmt(price)}점 필요해요.\n${isChar ? '' : '파란 로봇의 퀴즈를 풀어도 생물 카드를 얻을 수 있어요!'}`, { face: 'dp' });
         else this.notice.push(`${i + 1}번 카드를 ${fmt(price)}점에 살까요?\n(카드의 가격은 점점 비싸져요)`, {
           buttons: ['사기', '취소'],
@@ -354,7 +357,7 @@ export class HubScene {
     const lines = [
       ['독도 구출하러 가기', '생물 카드 뒤집기, 달리고 구하고 풀어라!, 독도를 건 마지막 승부를 할 수 있어요.'],
       ['독도 석상', '퍼즐을 열고 독도에 대하여 알아봅시다. 정령 퍼즐과 영웅 퍼즐 모두 독도 포인트로 열어요.'],
-      ['정령 구출하기', '포인트로 정령들을 마을에 불러낼 수 있어요. 정령을 누르면 이야기를 들려줘요.'],
+      ['정령 구출하기', '스테이지에서 구출한 정령을 포인트로 마을에 불러낼 수 있어요. 정령을 누르면 이야기를 들려줘요.'],
       ['독도 캐릭터 카드', '독도 캐릭터들에 대한 정보를 알 수 있습니다.'],
       ['독도 생물 카드', '독도에 살고있는 생물들에 대한 정보를 얻을 수 있습니다.'],
       ['마지막 승부', '10스테이지까지 정령 10명을 모두 구하면 로보킹과 독도를 건 퀴즈 배틀을 할 수 있어요!'],

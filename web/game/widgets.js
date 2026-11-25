@@ -52,26 +52,40 @@ export class Notice {
 // 긴 글 읽기 창 (마우스 휠·끌기·버튼으로 스크롤)
 export class Reader {
   constructor() { this.item = null; this.scroll = 0; this.drag = null; }
+  // item: { name(크게), sub(작은 분류), quote(대사), text(설명), image, frame, caption } — 예전처럼 title만 줘도 됨
   show(item) { this.item = item; this.scroll = 0; }
   get open() { return !!this.item; }
   draw(layer) {
     const it = this.item;
     if (!it) return;
     dim(0.6);
-    const x = 70, y = 40, w = W - 140, h = H - 80;
+    const x = 70, y = 36, w = W - 140, h = H - 72;
     panel(x, y, w, h);
-    text(it.title || '', x + 40, y + 26, { size: 36, color: '#7a3b12' });
-    const picW = it.image ? 340 : 0;
+    // 머리: 작은 분류 + 큰 이름
+    const name = it.name || it.title || '';
+    if (it.sub) text(it.sub, x + 44, y + 22, { size: 22, color: '#9a7a5a' });
+    text(name, x + 42, y + (it.sub ? 48 : 30), { size: 46, color: '#7a3b12' });
+    // 내용 칸: 머리 아래 ~ 버튼 줄 위
+    const cy0 = y + 118, cy1 = y + h - 96, chh = cy1 - cy0;
+    ctx.fillStyle = 'rgba(122,59,18,.25)'; ctx.fillRect(x + 36, cy0 - 12, w - 72, 2);
+    // 사진: 내용 칸 세로 가운데
+    const picW = it.image ? 330 : 0, capH = it.image && it.caption ? 44 : 0;
     if (it.image) {
-      panel(x + 30, y + 90, picW, picW, { fill: '#2d3a45', line: '#3a2f28', inner: false });
-      drawFit(img(it.image), x + 40, y + 100, picW - 20, picW - 20, { frame: it.frame });
-      if (it.caption) textBox(it.caption, x + 30, y + 100 + picW, picW, 70, { size: 24 });
+      const py = cy0 + (chh - picW - capH) / 2;
+      panel(x + 40, py, picW, picW, { fill: '#2d3a45', line: '#3a2f28', inner: false });
+      drawFit(img(it.image), x + 52, py + 12, picW - 24, picW - 24, { frame: it.frame });
+      if (it.caption) text(it.caption, x + 40 + picW / 2, py + picW + 10, { size: 26, align: 'center', color: '#3a2f28' });
     }
-    const tx = x + 50 + picW, tw = w - 90 - picW, ty = y + 90, th = h - 190;
-    const size = 27, lh = Math.round(size * 1.5);
-    const lines = wrap(it.text, tw, size);
-    const maxScroll = Math.max(0, lines.length * lh - th);
-    if (layer === ui.top) {
+    // 글 칸: 사진 오른쪽 빈 곳
+    const tx = x + (it.image ? 40 + picW + 44 : 50), tw = x + w - 50 - tx, ty = cy0, th = chh;
+    const qSize = 32, size = 27, lh = Math.round(size * 1.5), qlh = Math.round(qSize * 1.4);
+    const rows = [];
+    if (it.quote) { for (const ln of wrap(it.quote, tw, qSize)) rows.push({ s: ln, size: qSize, h: qlh, color: '#2f6fa8' }); rows.push({ s: '', size, h: lh * 0.7 }); }
+    for (const ln of wrap(it.text || '', tw, size)) rows.push({ s: ln, size, h: lh, color: '#2b2b2b' });
+    const total = rows.reduce((a, r) => a + r.h, 0);
+    const fits = total <= th;
+    const maxScroll = fits ? 0 : total - th;
+    if (layer === ui.top && !fits) {
       if (input.wheel) this.scroll += input.wheel * 0.6;
       if (input.pressed && inside(input.x, input.y, tx, ty, tw, th)) this.drag = { y: input.y, s: this.scroll };
       if (this.drag && input.down) this.scroll = this.drag.s - (input.y - this.drag.y);
@@ -82,19 +96,23 @@ export class Reader {
     this.scroll = Math.max(0, Math.min(maxScroll, this.scroll));
     ctx.save();
     ctx.beginPath(); ctx.rect(tx - 4, ty, tw + 8, th); ctx.clip();
-    let yy = ty - this.scroll;
-    for (const ln of lines) { if (yy > ty - lh && yy < ty + th) text(ln, tx, yy, { size }); yy += lh; }
+    // 짧은 글은 빈 곳의 가로·세로 한가운데, 긴 글은 위에서부터 읽고 넘기기
+    let yy = fits ? ty + (th - total) / 2 : ty - this.scroll;
+    for (const r of rows) {
+      if (r.s && yy > ty - r.h && yy < ty + th) text(r.s, fits ? tx + tw / 2 : tx, yy, { size: r.size, color: r.color, align: fits ? 'center' : 'left' });
+      yy += r.h;
+    }
     ctx.restore();
-    if (maxScroll > 0) {
+    if (!fits) {
       // 스크롤 막대
       ctx.fillStyle = 'rgba(58,47,40,.25)'; ctx.fillRect(x + w - 26, ty, 8, th);
       const bh = Math.max(40, th * th / (th + maxScroll));
       ctx.fillStyle = '#7a3b12'; ctx.fillRect(x + w - 26, ty + (th - bh) * (this.scroll / maxScroll), 8, bh);
-      if (button('▲', x + w - 260, y + h - 84, 70, 60, { layer, size: 26 })) this.scroll -= lh * 4;
-      if (button('▼', x + w - 180, y + h - 84, 70, 60, { layer, size: 26 })) this.scroll += lh * 4;
-      text('아래로 넘겨서 더 읽기', x + 50 + picW, y + h - 66, { size: 22, color: '#7a5a3a' });
+      if (button('▲', x + w - 260, y + h - 80, 70, 56, { layer, size: 26 })) this.scroll -= lh * 4;
+      if (button('▼', x + w - 180, y + h - 80, 70, 56, { layer, size: 26 })) this.scroll += lh * 4;
+      text('아래로 넘겨서 더 읽기', tx, y + h - 64, { size: 22, color: '#7a5a3a' });
     }
-    if (button('닫기', x + w - 100 - (maxScroll > 0 ? 0 : 0), y + h - 84, 80, 60, { layer, size: 26 }) || keyHit('Escape')) {
+    if (button('닫기', x + w - 100, y + h - 80, 80, 56, { layer, size: 26 }) || keyHit('Escape')) {
       const cb = it.onClose; this.item = null; cb?.();
     }
   }

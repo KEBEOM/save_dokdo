@@ -131,7 +131,7 @@ export class FinalBattleScene {
       if (hit(x, y, 200, 140, L)) {
         if (!b.open) this.notice.push('<열람 불가 안내>\n독도 도서관의 모든 자료는 퍼즐을 획득한 후에 열람하실 수 있습니다.\n독도석상의 퍼즐을 열고 자료를 열람해 봅시다!');
         else if (this.hints <= 0) this.notice.push('힌트를 모두 사용했어요.');
-        else { this.hints--; this.reader.show({ title: `${b.kind} · ${b.t}`, text: b.text }); }
+        else { this.hints--; this.reader.show({ sub: b.kind, name: b.t, text: b.text }); }
       }
     });
     if (button('도서관 닫기', W - 300, H - 110, 220, 60, { layer: L, size: 26 }) || keyHit('Escape')) this.lib = false;
