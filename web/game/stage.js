@@ -113,7 +113,7 @@ export class StageScene {
     this.spirit = d.spirit && !save.rescued[n - 1] ? { ...d.spirit, got: false } : null;
     this.door = { ...d.door, open: false };
     this.flag = d.flag;
-    this.p = { lastGround: this.start[1], x: this.start[0], y: this.start[1], vx: 0, vy: 0, ground: false, coyote: 0, buffer: 0, airJumps: 1, puff: 0, face: 1, anim: 0, blink: 0 };
+    this.p = { shields: [], lastGround: this.start[1], x: this.start[0], y: this.start[1], vx: 0, vy: 0, ground: false, coyote: 0, buffer: 0, airJumps: 1, puff: 0, face: 1, anim: 0, blink: 0 };
     this.cam = { x: this.p.x, y: this.p.y };
     this.notice = new Notice();
     this.modal = null;       // 열쇠 힌트·퀴즈 같은 큰 창
@@ -244,11 +244,11 @@ export class StageScene {
       if (rb.hop > 0) rb.hop -= dt;
       // 갈색 로봇: 주인공에게 보호막이 있으면 던지지 않고 가만히 서 있음
       if (rb.brown) {
-        if (p.shield) { if (rb.vx) { rb.saveVx = rb.vx; rb.vx = 0; } rb.wind = 0; rb.idle = true; }
+        if (p.shields.includes(rb.i)) { if (rb.vx) { rb.saveVx = rb.vx; rb.vx = 0; } rb.wind = 0; rb.idle = true; }   // 자기가 준 보호막이 남아 있는 동안만 쉼
         else if (rb.idle) { rb.idle = false; rb.vx = rb.saveVx || rb.speed; rb.tt = 0.8; }
       }
       // 초록 로봇(종이 뭉치)·갈색 로봇(종이비행기): 주인공이 가까우면 멈춰서 던짐
-      if ((rb.green || (rb.brown && !p.shield)) && !(rb.appear > 0)) {
+      if ((rb.green || (rb.brown && !p.shields.includes(rb.i))) && !(rb.appear > 0)) {
         const dx = p.x - rb.x, dy = p.y - rb.y;
         if (rb.wind > 0) {
           rb.wind -= dt; rb.look = Math.sign(dx) || 1;
@@ -271,9 +271,9 @@ export class StageScene {
       const dx = rb.x - p.x, dy = rb.y - (p.y - 0.08);
       if (dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2 && p.blink <= 0) {
         if (rb.q) { if (!rb.busy) this.openRobotQuiz(rb); return; }
-        if (p.shield) {
+        if (p.shields.length) {
           // 보호막이 대신 막아 줌: 보호막만 깨지고 살짝 튕겨 나감
-          p.shield = false; p.blink = 1.2; audio.sfx('pop');
+          p.shields.pop(); p.blink = 1.2; audio.sfx('pop');   // 맨 바깥 보호막 한 겹만 깨짐
           p.kb = 0.25; p.kbv = (Math.sign(p.x - rb.x) || 1) * 5; p.vy = Math.max(p.vy, 4.5);   // 살짝만 튕김
           this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true });
         } else {
@@ -293,13 +293,13 @@ export class StageScene {
         // 종이비행기에 맞으면 보호막 하나 (이미 있으면 그냥 사라짐)
         if (Math.abs(st.x - p.x) < 0.5 && Math.abs(st.y - (p.y - 0.07)) < 0.55) {
           st.dead = true;
-          if (!p.shield) { p.shield = true; audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }
+          if (!p.shields.includes(st.from)) { p.shields.push(st.from); audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }   // 갈색 로봇마다 한 겹씩 쌓임
         }
         continue;
       }
-      if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48 && p.shield) {
+      if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48 && p.shields.length) {
         // 보호막이 종이 뭉치를 막아 줌
-        st.dead = true; p.shield = false; p.paperSafe = 0.7; audio.sfx('pop'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); continue;
+        st.dead = true; p.shields.pop(); p.paperSafe = 0.7; audio.sfx('pop'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); continue;
       }
       if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48) {
         // 맞으면 날아온 쪽 반대로 튕겨 나감 (처음 자리로 돌아가지는 않음)
@@ -410,7 +410,7 @@ export class StageScene {
       // 종이비행기: 주인공 쪽으로 곧게 (조금 빗나갈 수 있음)
       const sx = rb.x + rb.look * 0.4, sy = rb.y + 0.5;
       const dx = p.x - sx, dy = (p.y - 0.05) - sy + (Math.random() - 0.5) * 0.4, d = Math.hypot(dx, dy) || 1, v = 6;
-      this.stones.push({ x: sx, y: sy, vx: dx / d * v, vy: dy / d * v, t: 0, rot: 0, plane: true });
+      this.stones.push({ x: sx, y: sy, vx: dx / d * v, vy: dy / d * v, t: 0, rot: 0, plane: true, from: rb.i });
       audio.sfx('throw');
       return;
     }
@@ -422,7 +422,7 @@ export class StageScene {
     audio.sfx('throw');
   }
   respawn() {
-    const p = this.p; p.kb = 0;   // 보호막(p.shield)은 떨어져서 다시 시작해도 그대로 남음
+    const p = this.p; p.kb = 0;   // 보호막(p.shields)은 떨어져서 다시 시작해도 그대로 남음 (스테이지를 나가면 새 판이라 없어짐)
     p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2; p.lastGround = p.y;
   }
   touchDoor() {
@@ -540,13 +540,14 @@ export class StageScene {
       const shake = p.kb > 0 ? Math.sin(this.t * 60) * 0.04 : 0;
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x + shake, p.y, 0.8 * 1.25, p.face < 0);
     }
-    if (p.shield) {
-      // 보호막: 주인공을 감싸는 하늘색 방울
+    if (p.shields.length) {
+      // 보호막: 주인공을 감싸는 하늘색 방울 (겹친 만큼 테두리가 늘어남)
       const [bx, by] = this.w2s(p.x, p.y + 0.05), r = 40 + Math.sin(this.t * 5) * 2;
       const g = ctx.createRadialGradient(bx - 10, by - 12, 4, bx, by, r);
       g.addColorStop(0, 'rgba(255,255,255,.35)'); g.addColorStop(0.7, 'rgba(140,220,255,.18)'); g.addColorStop(1, 'rgba(110,200,255,.45)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(90,190,255,.9)'; ctx.lineWidth = 3; ctx.stroke();
+      for (let k = 1; k < Math.min(4, p.shields.length); k++) { ctx.beginPath(); ctx.arc(bx, by, r + k * 6, 0, Math.PI * 2); ctx.strokeStyle = `rgba(90,190,255,${0.7 - k * 0.15})`; ctx.lineWidth = 2; ctx.stroke(); }
     }
     for (const st of this.stones) {
       const [sx, sy] = this.w2s(st.x, st.y);
@@ -675,12 +676,13 @@ export class StageScene {
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
     if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: save.rescued[this.n - 1] ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
-    if (this.p.shield) {
+    if (this.p.shields.length) {
       // 보호막이 있을 때 위쪽 칸 옆에 표시
       const hx = 14 + 4 * 66, hy = 74;
       panel(hx, hy, 58, 58, { r: 8, inner: false, fill: '#d8f1ff', lw: 3 });
       ctx.strokeStyle = '#3aa0e0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx + 29, hy + 29, 18, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
+      if (this.p.shields.length > 1) text('×' + this.p.shields.length, hx + 29, hy + 15, { size: 24, align: 'center', color: '#1f5f8f', stroke: '#fff', strokeW: 4 });
     }
     if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
