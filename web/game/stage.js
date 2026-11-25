@@ -727,7 +727,7 @@ export class StageScene {
       panel(170, 140, 230, 56, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
       const info = d.spirit ? spriteInfo(d.spirit.s) : null;
-      if (info?.im) drawFit(info.im, 180, 240, 200, 200);
+      if (info?.im) drawFit(info.im, 180, 240, 200, 200, { shade: save.rescued[this.n - 1] ? null : '#000' });   // 아직 구출하지 않은 정령은 검은 그림자
       textBox(d.hints[m.n - 1], 410, 196, W - 590, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
       if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 410 + (W - 590) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
@@ -777,7 +777,7 @@ export class StageScene {
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 47);
         const [n, fr] = icons[k] || [];
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 9, 40, 32); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 9, 40, 32); }
-        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 143, y + 2, 50, 47); }
+        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 143, y + 2, 50, 47, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 5, { size: 32, align: 'center', color: '#7a3b12' });
         else if (n) drawFit(img(n), 145, y + 2, 46, 43, { frame: fr });
         textBox(g, 214, y + 1, W - 360, 45, { size: 20, align: 'left' });
