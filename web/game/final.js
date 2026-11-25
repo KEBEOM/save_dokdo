@@ -3,7 +3,8 @@ import { W, H, ctx, img, drawCover, drawFit, panel, text, textBox, button, hit, 
 import { nav, Notice, Reader } from './widgets.js';
 import { SPIRIT_TITLES, HERO_TITLES } from './hub.js';
 
-const MY_HP = 500, OP_HP = 1200, Q_TIME = 60;
+// 난이도: 8문제 맞히면 승리, 8번 틀리면 패배, 문제당 90초, 힌트 8번
+const MY_HP = 800, OP_HP = 800, Q_TIME = 90, HINTS = 8;
 
 export class FinalBattleScene {
   constructor() {
@@ -11,7 +12,7 @@ export class FinalBattleScene {
     // 처음 두 문제는 꼭 나오고, 나머지는 섞어서
     this.queue = [qs[0], qs[1], ...shuffle(qs.slice(2))];
     this.my = MY_HP; this.op = OP_HP; this.state = 'intro'; this.t = 0; this.num = 0;
-    this.hints = 5; this.notice = new Notice(); this.reader = new Reader(); this.lib = false;
+    this.hints = HINTS; this.notice = new Notice(); this.reader = new Reader(); this.lib = false;
   }
   enter() { audio.play('roboking_battle'); }
   next() {
@@ -47,8 +48,8 @@ export class FinalBattleScene {
       ctx.fillStyle = '#3a2f28'; ctx.fillRect(bx + 16, 76, 298, 28);
       ctx.fillStyle = right ? '#c0392b' : '#3d9a4a'; ctx.fillRect(bx + 18, 78, 294 * Math.max(0, hp) / max, 24);
     };
-    bar(20, '나', this.my, MY_HP, this.my > 200 ? 'playericon' : 'playericon2', false);
-    const kingFace = 'roboking' + Math.min(5, 1 + Math.floor((OP_HP - this.op) / 250));
+    bar(20, '나', this.my, MY_HP, this.my > MY_HP * 0.35 ? 'playericon' : 'playericon2', false);
+    const kingFace = 'roboking' + Math.min(5, 1 + Math.floor((OP_HP - this.op) / (OP_HP / 5)));
     bar(W - 20, '로보킹', this.op, OP_HP, kingFace, true);
     if (this.state === 'question' || this.state === 'feedback') this.drawQuestion();
     if (this.state === 'feedback') this.drawFeedback();
@@ -64,7 +65,7 @@ export class FinalBattleScene {
     drawFit(img('playericon'), 220, 330, 200, 200);
     drawFit(img('roboking1'), W - 420, 330, 200, 200);
     text('VS', W / 2, 400, { size: 80, align: 'center', color: '#fff', stroke: '#c0392b', strokeW: 10 });
-    textBox('문제를 맞히면 로보킹의 에너지가 100 줄고, 틀리거나 시간이 지나면 내 에너지가 100 줄어요.\n로보킹의 에너지 1200을 모두 없애면 승리!', 200, 540, W - 400, 80, { size: 24, color: '#fff', stroke: 'rgba(0,0,0,.7)', strokeW: 5 });
+    textBox(`문제를 맞히면 로보킹의 에너지가 100 줄고, 틀리거나 시간이 지나면 내 에너지가 100 줄어요.\n${OP_HP / 100}문제를 맞혀 로보킹의 에너지 ${OP_HP}을 모두 없애면 승리! (문제마다 ${Q_TIME}초, 힌트 ${HINTS}번)`, 200, 540, W - 400, 80, { size: 24, color: '#fff', stroke: 'rgba(0,0,0,.7)', strokeW: 5 });
     if (button('시작', W / 2 - 150, 630, 300, 70, { size: 36 }) || keyHit('Enter')) this.next();
     if (button('뒤로가기', 30, 640, 200, 60, { size: 26 })) go(nav.hub());
   }
@@ -74,7 +75,7 @@ export class FinalBattleScene {
     panel(60, 126, 150, 44, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
     text(`문제 ${this.num}`, 135, 133, { size: 26, color: '#fff', align: 'center' });
     panel(226, 130, 760, 36, { r: 8, fill: 'rgba(58,47,40,.92)', line: '#f4e3c3', inner: false, lw: 2 });
-    ctx.fillStyle = this.time > 15 ? '#e0b040' : '#e06040'; ctx.fillRect(234, 138, 744 * Math.max(0, this.time) / Q_TIME, 20);
+    ctx.fillStyle = this.time > 20 ? '#e0b040' : '#e06040'; ctx.fillRect(234, 138, 744 * Math.max(0, this.time) / Q_TIME, 20);
     text(`남은 시간 ${Math.ceil(Math.max(0, this.time))}초`, 1000, 132, { size: 26, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
     panel(60, 178, W - 120, 246, { fill: 'rgba(250,240,220,.97)' });
     textBox(q.q, 90, 192, W - 180, 218, { size: 30 });
