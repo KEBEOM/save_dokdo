@@ -67,8 +67,10 @@ export class HubScene {
   update(dt) {
     this.t += dt;
     this.reveal.update(dt);
+    this.updateDrag(dt);
     for (const w of this.walkers) {
       if (w.touch > 0) w.touch = Math.max(0, w.touch - dt);
+      if (w.held) continue;                                   // 손으로 들고 있는 정령은 걷지 않음
       w.tNext -= dt;
       if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
       w.x += w.vx * dt;
@@ -77,11 +79,12 @@ export class HubScene {
     }
     // 정령끼리 너무 붙으면 서로 살짝 비켜서기 (겹쳐 보이지 않게)
     for (const a of this.walkers) for (const b of this.walkers) {
-      if (a === b) continue;
+      if (a === b || a.held || b.held) continue;
       const dx = b.x - a.x, dy = b.y - a.y;
       if (Math.abs(dx) < 78 && Math.abs(dy) < 60) { const push = (78 - Math.abs(dx)) * 0.5 * Math.min(1, dt * 6) * (dx >= 0 ? 1 : -1); a.x -= push; b.x += push; }
     }
     for (const w of this.walkers) {
+      if (w.held) continue;
       w.x = Math.max(260, Math.min(1000, w.x));
     }
     if (this.bubble) { this.bubble.t -= dt; if (this.bubble.t <= 0) this.bubble = null; }
@@ -109,10 +112,11 @@ export class HubScene {
     for (const w of [...this.walkers].sort((a, b) => a.y - b.y)) {
       const s = spiritImage(w.i);
       // 원작처럼 몸을 늘였다 줄였다 (발바닥 기준)
-      const [sx, sy] = spiritSquash(this.t + w.i * 0.37, !!w.vx, w.touch || 0);
+      const [sx, sy] = w.held ? [1.08, 1.08] : spiritSquash(this.t + w.i * 0.37, !!w.vx, w.touch || 0);
+      const lift = w.held ? 18 : 0;
       ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
-      drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
-      if (hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
+      drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
+      if (!this.dropped && !w.held && hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
     }
     if (this.bubble) {
       const b = this.bubble, w = 420;
@@ -127,6 +131,30 @@ export class HubScene {
     this.reader.draw(2);
     this.notice.draw(3);
     this.reveal.draw(4);
+  }
+  // 정령을 꾹 누르고(0.35초) 있으면 들어 올려 원하는 곳으로 옮길 수 있음
+  updateDrag(dt) {
+    this.dropped = false;
+    if (this.layer !== 0) { this.press = null; return; }
+    if (input.pressed && !this.press) {
+      const w = [...this.walkers].sort((a, b) => b.y - a.y).find(w => inside(input.x, input.y, w.x - 45, w.y - 50, 90, 90));
+      if (w) this.press = { w, t: 0, x: input.x, y: input.y, grab: false };
+    }
+    const pr = this.press;
+    if (!pr) return;
+    if (input.down) {
+      pr.t += dt;
+      if (!pr.grab && pr.t > 0.35) { pr.grab = true; pr.w.held = true; pr.w.vx = 0; audio.sfx('click'); }
+      if (pr.grab) {
+        const nx = Math.max(260, Math.min(1000, input.x));
+        if (nx < pr.w.x - 1) pr.w.flip = true; else if (nx > pr.w.x + 1) pr.w.flip = false;   // 옮기는 쪽을 바라봄
+        pr.w.x = nx;
+        pr.w.y = Math.max(520, Math.min(640, input.y - 10));   // 발이 마을 풀밭 안에 오도록
+      }
+    } else {
+      if (pr.grab) { pr.w.held = false; pr.w.tNext = 2 + Math.random() * 2; pr.w.touch = 0.25; this.dropped = true; }
+      this.press = null;
+    }
   }
   talk(w) {
     const d = game.data;
@@ -274,15 +302,16 @@ export class HubScene {
     if (!shown) drawFit(img('Lock'), 580, 180, 120, 120);
     text(`${i + 1} / 10`, 820, 108, { size: 22, align: 'right', color: '#f4e3c3' });
     text(d.spiritNames[i], 640, 392, { size: 36, align: 'center' });
-    text(save.rescued[i] ? '달리기에서 구출한 정령이에요' : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 436, { size: 22, align: 'center', color: '#5a4a3a' });
+    text(save.rescued[i] ? `${i + 1}스테이지에서 구출한 정령이에요` : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 436, { size: 22, align: 'center', color: '#5a4a3a' });
     if (shown) {
       panel(490, 484, 300, 70, { fill: '#c8e6b0' });
       text('구출 성공!', 640, 502, { size: 32, align: 'center' });
     } else {
       const c1 = spiritShowCost(i);
-      if (!save.rescued[i]) {
-        // 달리기에서 먼저 구해야 마을로 데려올 수 있음
-        if (button(`${i + 1}스테이지에서 먼저 구출하기`, 440, 484, 400, 70, { layer: L, size: 26, fill: '#cfc6b6' })) this.notice.push(`${d.spiritNames[i]}은(는) 아직 ${i + 1}스테이지에 갇혀 있어요.\n달리고 구하고 풀어라!에서 먼저 구출하면\n마을로 데려올 수 있어요.`, { title: '아직 구출하지 못했어요' });
+      if (!save.rescued[i] || !save.cleared[i]) {
+        // 그 스테이지를 깨고, 그 스테이지의 정령도 구출해야 마을로 데려올 수 있음
+        const need = !save.cleared[i] && !save.rescued[i] ? `${i + 1}스테이지를 깨고 정령을 구출해야 해요` : !save.cleared[i] ? `${i + 1}스테이지를 깨야 해요` : `${i + 1}스테이지에서 정령을 구출해야 해요`;
+        if (button(need, 440, 484, 400, 70, { layer: L, size: 24, fill: '#cfc6b6' })) this.notice.push(`${d.spiritNames[i]}을(를) 마을로 데려오려면\n${i + 1}스테이지를 깨고, 그 스테이지에 숨어 있는\n${d.spiritNames[i]}도 구출해야 해요.\n(스테이지 ${save.cleared[i] ? '깸 ✔' : '아직'} · 정령 ${save.rescued[i] ? '구출 ✔' : '아직'})`, { title: '아직 데려올 수 없어요' });
       } else if (button(`${fmt(c1)} 포인트로 구출`, 440, 484, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
     }
     if (button('◀', 270, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
