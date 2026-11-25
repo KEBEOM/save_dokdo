@@ -16,7 +16,7 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 초록 로봇 몸에 닿으면 처음 장소로!', '갈색 로봇은 종이비행기를 던진다! 맞으면 보호막이 생겨 로봇이나 종이 뭉치에 한 번 맞아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 초록 로봇 몸에 닿으면 처음 장소로!', '갈색 로봇은 종이비행기를 딱 한 번 던진다! 맞으면 보호막이 생겨 종이 뭉치를 막고, 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -248,7 +248,7 @@ export class StageScene {
         else if (rb.idle) { rb.idle = false; rb.vx = rb.saveVx || rb.speed; rb.tt = 0.8; }
       }
       // 초록 로봇(종이 뭉치)·갈색 로봇(종이비행기): 주인공이 가까우면 멈춰서 던짐
-      if ((rb.green || (rb.brown && !p.shields.includes(rb.i))) && !(rb.appear > 0)) {
+      if ((rb.green || (rb.brown && !rb.gave)) && !(rb.appear > 0)) {   // 갈색 로봇은 스테이지마다 한 번만 비행기를 줌
         const dx = p.x - rb.x, dy = p.y - rb.y;
         if (rb.wind > 0) {
           rb.wind -= dt; rb.look = Math.sign(dx) || 1;
@@ -293,13 +293,14 @@ export class StageScene {
         // 종이비행기에 맞으면 보호막 하나 (이미 있으면 그냥 사라짐)
         if (Math.abs(st.x - p.x) < 0.5 && Math.abs(st.y - (p.y - 0.07)) < 0.55) {
           st.dead = true;
-          if (!p.shields.includes(st.from)) { p.shields.push(st.from); audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }   // 갈색 로봇마다 한 겹씩 쌓임
+          const giver = this.robots.find(r => r.i === st.from);
+          if (giver && !giver.gave) { giver.gave = true; p.shields.push(st.from); audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }   // 갈색 로봇마다 한 겹씩, 스테이지에서 한 번만
         }
         continue;
       }
       if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48 && p.shields.length) {
-        // 보호막이 종이 뭉치를 막아 줌
-        st.dead = true; p.shields.pop(); p.paperSafe = 0.7; audio.sfx('pop'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); continue;
+        // 보호막이 종이 뭉치를 튕겨 냄 (보호막은 그대로)
+        st.dead = true; p.paperSafe = 0.4; audio.sfx('thud'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); continue;
       }
       if (p.blink <= 0 && !(p.paperSafe > 0) && Math.abs(st.x - p.x) < 0.42 && Math.abs(st.y - (p.y - 0.07)) < 0.48) {
         // 맞으면 날아온 쪽 반대로 튕겨 나감 (처음 자리로 돌아가지는 않음)
