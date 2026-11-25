@@ -239,15 +239,24 @@ export class StageScene {
         rb.jt -= dt;
         if (rb.jt <= 0) {
           rb.jt = 0.45 + Math.random() * 0.9;                       // 예전보다 약 2배 자주
-          if (Math.random() < Math.min(0.92, 0.6 + 0.035 * this.n)) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; audio.sfx('boing', this.near(rb.x, rb.y)); }
+          if (Math.random() < Math.min(0.92, 0.6 + 0.035 * this.n)) { rb.vy = 7 + Math.random() * (2 + 0.35 * this.n); rb.hop = 0.25; if (this.t - (this.lastBoing ?? -9) > 0.8) { const sp = this.near(rb.x, rb.y, 7); if (sp.vol > 0.05) { this.lastBoing = this.t; audio.sfx('boing', { vol: sp.vol * 0.7, pan: sp.pan }); } } }
         }
       }
       if (rb.hop > 0) rb.hop -= dt;
       // 로봇 소리: 종류마다 다른 소리를 가끔 냄 (가까우면 크게, 멀면 작게)
       rb.beep = (rb.beep ?? Math.random() * 2.5) - dt;
       if (rb.beep <= 0) {
-        rb.beep = 1.0 + Math.random() * 1.3;
-        if (!rb.solved && !(rb.appear > 0)) { const sp = this.near(rb.x, rb.y); if (sp.vol > 0.03) audio.sfx(rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : rb.blue ? 'robo_blue' : 'robo_red', sp); }
+        rb.beep = 2.5 + Math.random() * 2;
+        // 가까운(9칸 안) 로봇만, 그리고 로봇 소리끼리는 0.7초 넘게 띄워서 하나씩
+        if (!rb.solved && !(rb.appear > 0) && this.t - (this.lastRobo ?? -9) > 0.7) {
+          const sp = this.near(rb.x, rb.y, 9);
+          if (sp.vol > 0.05) { this.lastRobo = this.t; audio.sfx(rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : rb.blue ? 'robo_blue' : 'robo_red', sp); }
+        }
+      }
+      // 걸어 다니는 로봇은 가까우면 철컥철컥 발소리
+      if (rb.walk && rb.vx && !(rb.appear > 0)) {
+        rb.step = (rb.step ?? Math.random() * 0.35) - dt;
+        if (rb.step <= 0) { rb.step = 0.36; const sp = this.near(rb.x, rb.y, 4); if (sp.vol > 0.05) audio.sfx('clank', sp); }
       }
       // 갈색 로봇: 주인공에게 보호막이 있으면 던지지 않고 가만히 서 있음
       if (rb.brown) {
@@ -408,9 +417,9 @@ export class StageScene {
     ctx.restore();
   }
   // 소리 위치: 주인공과 가까울수록 크게(3칸 안은 최대, 14칸 넘으면 안 들림), 왼쪽·오른쪽에서 들리게
-  near(x, y) {
+  near(x, y, range = 14) {
     const p = this.p, d = Math.hypot(x - p.x, (y - p.y) * 1.3);
-    return { vol: d < 3 ? 1 : Math.max(0, 1 - (d - 3) / 11), pan: Math.max(-1, Math.min(1, (x - p.x) / 9)) };   // 3칸 안은 최대, 14칸에서 0
+    return { vol: d < 2 ? 1 : Math.max(0, 1 - (d - 2) / (range - 2)), pan: Math.max(-1, Math.min(1, (x - p.x) / 9)) };   // 2칸 안은 최대, range칸에서 0
   }
   throwStone(rb) {
     const p = this.p, g = GRAV * 0.55;

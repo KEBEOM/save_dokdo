@@ -381,6 +381,19 @@ export const audio = {
       g.gain.setValueAtTime(vol * sv, t + when); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur);
       src.connect(f); f.connect(g); g.connect(out); src.start(t + when, Math.random() * 0.5); src.stop(t + when + dur + 0.02);
     };
+    // 로봇 목소리: 음이 뚝뚝 바뀌는 네모파에 빠른 떨림(지글거림)을 얹어 기계음처럼
+    const robo = (freqs, step, vol = 0.1, when = 0, wave = 'square', buzz = 55) => {
+      const o = c.createOscillator(), am = c.createGain(), g = c.createGain(), m = c.createOscillator(), depth = c.createGain();
+      o.type = wave; freqs.forEach((f, i) => o.frequency.setValueAtTime(f, t + when + i * step));
+      m.type = 'square'; m.frequency.value = buzz; depth.gain.value = 0.45; am.gain.value = 0.55;
+      m.connect(depth); depth.connect(am.gain);
+      const dur = freqs.length * step;
+      g.gain.setValueAtTime(0.0001, t + when); g.gain.linearRampToValueAtTime(vol * sv, t + when + 0.01);
+      g.gain.setValueAtTime(vol * sv, t + when + dur - 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur + 0.04);
+      o.connect(am); am.connect(g); g.connect(out);
+      o.start(t + when); m.start(t + when); o.stop(t + when + dur + 0.06); m.stop(t + when + dur + 0.06);
+    };
+    const pick = (lo, hi, n) => Array.from({ length: n }, () => Math.round(lo + Math.random() * (hi - lo)));
     switch (kind) {
       case 'click': tone(660, 0.06, 'square', 0.04); break;
       case 'jump': tone(380, 0.14, 'square', 0.05, 0, 380); break;
@@ -400,11 +413,17 @@ export const audio = {
       case 'plane': noise(0.35, 0.05, 0, 1800, 3); tone(500, 0.3, 'sine', 0.03, 0, 300); break;              // 종이비행기 휙
       case 'thud': noise(0.06, 0.2, 0, 2800, 0.9); noise(0.05, 0.15, 0.05, 1800, 0.9); break;                  // 종이 바스락 (떨어짐)
       // 로봇 소리 (가까울수록 크게)
-      case 'robo_red': [1046, 1568, 1046, 1568, 1318].forEach((f, i) => tone(f, 0.05, 'square', 0.11, i * 0.055)); break;   // 삐리리릭
-      case 'robo_green': tone(140, 0.3, 'sawtooth', 0.12, 0, 70); tone(880, 0.06, 'square', 0.08, 0.3); tone(1320, 0.06, 'square', 0.08, 0.37); break;   // 부르릉 삐빅
-      case 'robo_brown': tone(700, 0.16, 'triangle', 0.14, 0, 400); tone(1100, 0.12, 'triangle', 0.11, 0.17, -300); break;   // 휘리릭 (휘파람)
-      case 'robo_blue': tone(1320, 0.07, 'square', 0.09); tone(990, 0.07, 'square', 0.09, 0.09); tone(1320, 0.1, 'square', 0.08, 0.18); break;   // 삐빅삐
-      case 'boing': tone(260, 0.22, 'triangle', 0.14, 0, 420); break;                                              // 파란 로봇이 뜀
+      case 'robo_red': robo(pick(700, 1600, 5 + Math.floor(Math.random() * 2)), 0.05, 0.05, 0, 'triangle', 45); break;   // 삐리리빅 (작고 부드러운 기계음)
+      case 'robo_green': { const sw = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+        sw.type = 'sawtooth'; sw.frequency.setValueAtTime(110, t); sw.frequency.linearRampToValueAtTime(320, t + 0.35); sw.frequency.linearRampToValueAtTime(180, t + 0.5);
+        lfo.frequency.value = 18; lg.gain.value = 25; lfo.connect(lg); lg.connect(sw.frequency);
+        g.gain.setValueAtTime(0.035 * sv, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+        sw.connect(g); g.connect(out); sw.start(t); lfo.start(t); sw.stop(t + 0.56); lfo.stop(t + 0.56);
+        robo([1000, 1300], 0.06, 0.045, 0.5, 'triangle', 40); break; }   // 위이잉(모터) + 삐빅
+      case 'robo_brown': tone(800, 0.16, 'sine', 0.05, 0, 400); robo([1000, 700], 0.09, 0.045, 0.18, 'triangle', 35); break;   // 휘익 + 삐-뽀
+      case 'robo_blue': robo([660, 990, 0, 1180], 0.06, 0.045, 0, 'triangle', 50); break;   // 띠딩 삐 (컴퓨터)
+      case 'clank': noise(0.03, 0.1, 0, 3000, 4); tone(1700, 0.05, 'triangle', 0.02); break;   // 철컥 (작은 로봇 발소리)
+      case 'boing': tone(260, 0.2, 'triangle', 0.06, 0, 380); break;                                              // 파란 로봇이 뜀
       case 'buy': [659, 880, 1318].forEach((f, i) => tone(f, 0.1, 'square', 0.05, i * 0.06)); break;
     }
   },
