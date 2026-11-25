@@ -47,7 +47,7 @@ async function boot() {
   let done = 0;
   await Promise.all(first.map(n => preload([n]).then(() => { done++; if (bar) bar.style.width = (50 + 50 * done / first.length) + '%'; })));
   // 나머지는 뒤에서 미리 받아 두기
-  preload(['bg2', 'bg8', 'bg9', 'bg10', 'bg11', 'bg12', 'bg13', 'bg14', 'bg15', 'bg16', 'bg17', 'bg18', 'bg19', 'stagebg', 'boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_blue', 'roboking', 'spirits', 'water_mob', 'cardback', 'titleblock', 'selecticon', 'daddy4', 'generallee', 'boom', 'card_normal']);
+  preload(['bg2', 'bg8', 'bg9', 'bg10', 'bg11', 'bg12', 'bg13', 'bg14', 'bg15', 'bg16', 'bg17', 'bg18', 'bg19', 'runbg_morning', 'boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_blue', 'roboking', 'spirits', 'water_mob', 'cardback', 'titleblock', 'selecticon', 'daddy4', 'generallee', 'boom', 'card_normal']);
   document.getElementById('loading')?.remove();
   setScene(nav.title());
   let last = performance.now();
