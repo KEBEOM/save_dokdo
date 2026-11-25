@@ -254,7 +254,7 @@ export class StageScene {
       if (rb.solved) continue;
       const dx = rb.x - p.x, dy = rb.y - (p.y - 0.08);
       if (dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2 && p.blink <= 0) {
-        if (rb.q) { this.openRobotQuiz(rb); return; }
+        if (rb.q) { if (!rb.busy) this.openRobotQuiz(rb); return; }
         audio.sfx('hurt');
         this.respawn();
       }
@@ -377,7 +377,8 @@ export class StageScene {
     this.modal = { type: 'clear' };
   }
   openRobotQuiz(rb) {
-    this.p.x -= 1.6 * Math.sign(rb.x - this.p.x || 1); this.p.vy = 0; this.p.blink = 1.5;
+    // 밀어내지 않고 그 자리에 세워 둠 (발판 끝에서 밀려 떨어지지 않게). 맞힌 로봇은 다시 문제를 내지 않음
+    const p = this.p; p.vx = 0; p.vy = Math.max(0, p.vy); p.kb = 0; p.blink = 1.2; rb.busy = true;
     this.returnFromQuiz = true;
     go(nav.robotQuiz(rb.q, this, () => { rb.solved = true; }));
   }
