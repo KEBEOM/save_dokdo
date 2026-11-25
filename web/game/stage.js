@@ -215,7 +215,16 @@ export class StageScene {
     if (p.puff > 0) p.puff -= dt;
     // 떨어지거나 죽는 땅에 닿으면 처음 자리로
     // 맨 아래로 떨어지거나, 마지막으로 서 있던 곳보다 한참(16칸) 아래로 떨어지면 체크포인트로
-    if (p.y < this.bounds.b - 3 || p.y < p.lastGround - 16 || this.collide(this.pbox(), this.deadly)) this.respawn();
+    // 맵 맨 아래로 빠지면 체크포인트로. 공중에서는 발밑(조금 옆까지)에 발판이 하나라도 있으면 끝까지 떨어져 착지하고,
+    // 발밑이 완전히 비어 있을 때만 서 있던 곳보다 6칸 넘게 떨어지면 일찍 돌려보냄
+    let voidFall = false;
+    if (!p.ground && p.vy < 0 && p.y < p.lastGround - 6) {
+      const feet = p.y - 0.38, x0 = p.x - 1.2, x1 = p.x + 1.2;
+      const under = s => s.x < x1 && s.x + s.w > x0 && s.y + s.h <= feet + 0.05;
+      const moverUnder = this.movers.some(m => m.x0 - 0.5 < x1 && m.x0 + m.ax + m.w + 0.5 > x0 && m.top - 1 <= feet);
+      voidFall = !this.solids.some(under) && !moverUnder;
+    }
+    if (p.y < this.bounds.b - 3 || voidFall || this.collide(this.pbox(), this.deadly)) this.respawn();
 
     // 로봇
     for (const rb of this.robots) {
