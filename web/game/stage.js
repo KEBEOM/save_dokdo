@@ -335,6 +335,7 @@ export class StageScene {
       const info = spriteInfo(s.s); const half = info ? Math.max(info.w * Math.abs(s.sx), 0.8) / 2 : 0.6;
       if (Math.abs(s.x - p.x) < half + 0.2 && Math.abs(s.y - p.y) < half + 0.3) {
         s.got = true; save.rescued[this.n - 1] = true; save.dp += 10; persist();
+        this.start = [s.x, s.y - 0.15];   // 정령을 구한 자리도 체크포인트 (떨어지면 여기서 다시 시작)
         audio.sfx('good'); this.modal = { type: 'save' };
       }
     }
@@ -761,7 +762,7 @@ export class StageScene {
       // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
       panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
       text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
-      text('독도 포인트 +10', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      text('독도 포인트 +10  ·  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
       if (bg) drawFit(bg, 170, 134, W - 340, 430);
       panel(200, 584, W - 590, 76, {});
       textBox(d.saveText, 220, 590, W - 630, 64, { size: 30 });

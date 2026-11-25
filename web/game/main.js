@@ -35,7 +35,7 @@ async function boot() {
   const bar = document.getElementById('load-fill');
   const status = document.getElementById('load-text');
   try {
-    const font = new FontFace('DoHyeon', 'url(assets/dohyeon.woff)');
+    const font = new FontFace('DoHyeon', 'url(assets/dohyeon.woff?v=2)');
     document.fonts.add(await font.load());
   } catch (_) { /* 글꼴을 못 불러와도 기본 글꼴로 계속 */ }
   if (bar) bar.style.width = '30%';
