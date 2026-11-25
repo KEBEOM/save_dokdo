@@ -1,8 +1,8 @@
 // 이야기 장면(인트로·중간 이야기·엔딩)의 대사와, 대사를 넘기며 보여 주는 장면
 import { W, H, ctx, img, drawCover, drawFit, panel, textBox, text, button, hit, input, keyHit, audio, beginUI, ui, dim } from './core.js';
 
-const DADDY = { img: 'daddy', x: 40, y: 70, w: 420, h: 420 };
-const LEE = { img: 'generallee', x: 40, y: 60, w: 430, h: 430 };
+const DADDY = { img: 'daddy', side: true, fig: [102 / 400, 285 / 400] };
+const LEE = { img: 'generallee', side: true, fig: [85 / 400, 343 / 400] };
 const KING = { img: 'bg18', x: 470, y: 40, w: 340, h: 340 };
 const BOY = { img: 'boy_jump', frame: [0, 0, 80, 80], x: 60, y: 300, w: 200, h: 200 };
 
@@ -40,7 +40,7 @@ export const RUN_INTRO = [
 export const LEE_REVEAL = [
   { bg: 'bg3', speaker: '독도아저씨', chars: [DADDY], text: '여기까지 잘 따라와 주었다. 이제 더는 내가 널 도와줄 수 없다! \n이 앞은 순수한 마음을 가진 어린이만 들어갈 수 있지...!' },
   { bg: 'bg3', speaker: '독도아저씨', chars: [DADDY], text: '이제 나의 원래 모습을 보여줄 때가 되었구나..' },
-  { bg: 'bg3', chars: [{ img: 'boom', x: 40, y: 60, w: 440, h: 440 }], text: '', auto: 1.2 },
+  { bg: 'bg3', chars: [{ img: 'boom', side: true, fig: [30 / 400, 383 / 400] }], text: '', auto: 1.2 },
   { bg: 'bg3', speaker: '이사부 장군', chars: [LEE], text: '나의 후손이여, 너의 안전이 나는 너무도 걱정이 되는구나...' },
   { bg: 'bg3', speaker: '이사부 장군', chars: [LEE], text: '여기서 쌓은 독도의 지식과 추억이 있기에 \n너는 반드시 해낼 수 있을 거라 믿는다.' },
   { bg: 'bg3', speaker: '이사부 장군', chars: [LEE], text: '부디 로봇들의 왕을 물리치고 독도를 구해주길 바란다!' },
@@ -107,16 +107,26 @@ export class StoryScene {
     const p = this.pages[this.i];
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     drawCover(img(p.bg), 0, 0, W, H);
+    // 대화창: 화면 아래 / 말하는 인물은 오른쪽에 서서 아랫몸이 창 안으로 살짝 들어옴
+    const box = { x: 90, y: 500, w: W - 180, h: 190 };
+    const side = (p.chars || []).find(c => c.side);
+    const S = 440, sideX = side ? box.x + box.w - 30 - side.fig[1] * S : 0;   // 인물 몸의 오른쪽 끝이 창 오른쪽 안쪽에
+    const drawSide = () => {
+      if (!side) return;
+      const im = img(side.img); if (!im) return;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, box.y + box.h - 8); ctx.clip();   // 창 아래로는 안 나가게
+      drawFit(im, sideX, box.y + box.h - 8 - S, S, S, { shade: side.shadow ? '#000' : null });
+      ctx.restore();
+    };
     for (const c of p.chars || []) {
+      if (c.side) continue;
       const im = img(c.img);
-      if (!im) continue;
-      if (c.shadow) {
-        drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame, shade: '#000' });
-      } else drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame });
+      if (im) drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame, shade: c.shadow ? '#000' : null });
     }
-    if (p.statue) drawFit(img('statue'), 860, 70, 300, 300);
+    if (p.statue) drawFit(img('statue'), 150, 110, 300, 300);
     const appear = Math.min(1, this.t * 4);
     let txt = p.reply ? this.reply : p.text;
+    if (!txt && side) drawSide();
     if (p.choices) {
       const n = p.choices.length, bw = n === 1 ? 760 : 560, gap = 40;
       const x0 = (W - (bw * n + gap * (n - 1))) / 2;
@@ -129,12 +139,15 @@ export class StoryScene {
       });
     } else if (txt) {
       ctx.globalAlpha = appear;
-      panel(90, 500, W - 180, 190, { fill: 'rgba(250,240,220,.96)' });
+      panel(box.x, box.y, box.w, box.h, { fill: 'rgba(250,240,220,.96)' });
+      drawSide();
       if (p.speaker) {
         panel(120, 452, 230, 62, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
         text(p.speaker, 235, 465, { size: 30, color: '#fff', align: 'center' });
       }
-      textBox(txt, 130, 520, W - 260, 150, { size: 38 });
+      // 글은 창 안의 빈 곳(인물을 뺀 자리) 한가운데에
+      const tx0 = box.x + 40, tx1 = side ? sideX + side.fig[0] * S - 24 : box.x + box.w - 40;
+      textBox(txt, tx0, box.y + 20, tx1 - tx0, box.h - 40, { size: 38 });
       ctx.globalAlpha = 1;
       text('* 대사를 터치해서 넘기기', 100, 20, { size: 24, color: '#fff', stroke: 'rgba(0,0,0,.6)' });
     }

@@ -615,17 +615,17 @@ export class StageScene {
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
       const info = d.spirit ? spriteInfo(d.spirit.s) : null;
       if (info?.im) drawFit(info.im, 180, 240, 200, 200);
-      textBox(d.hints[m.n - 1], 410, 210, W - 600, 230, { size: 30 });
-      if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 440, { size: 22, align: 'center', color: '#7a5a3a' });
+      textBox(d.hints[m.n - 1], 400, 196, W - 540, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
+      if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 400 + (W - 540) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'msg') {
       panel(110, 210, W - 220, 260); face(m.face);
-      textBox(m.text, 330, 240, W - 480, 140, { size: 34 });
+      textBox(m.text, 320, 226, W - 450, 150, { size: 34 });   // 얼굴 오른쪽 빈 곳 한가운데
       if (button('확인', W / 2 - 100, 390, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) { close(); m.then?.(); }
     } else if (m.type === 'seq') {
       m.i = m.i || 0;
       panel(110, 210, W - 220, 260); face(m.face);
-      textBox(m.texts[m.i], 330, 240, W - 480, 140, { size: 32 });
+      textBox(m.texts[m.i], 320, 226, W - 450, 150, { size: 32 });
       if (button(m.i < m.texts.length - 1 ? '다음' : '확인', W / 2 - 100, 390, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) {
         if (++m.i >= m.texts.length) { close(); m.then?.(); }
       }
@@ -684,7 +684,7 @@ export class StageScene {
       if (button('스테이지 메뉴', W / 2 + 20, 460, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
     } else if (m.type === 'notpass') {
       panel(110, 190, W - 220, 320); face('daddy');
-      textBox(NOT_PASS, 330, 220, W - 480, 180, { size: 30 });
+      textBox(NOT_PASS, 320, 206, W - 450, 196, { size: 30 });
       if (button('스테이지 메뉴로 나간다', W / 2 - 180, 420, 360, 64, { layer: L, size: 28 })) go(nav.stageSelect());
       if (button('조금 더 둘러보기', W / 2 + 200, 420, 260, 64, { layer: L, size: 24 })) close();
     }
@@ -720,13 +720,13 @@ export class RobotQuizScene {
     const L = this.reveal.open ? 1 : 0;
     beginUI(L);
     drawCover(img('bg19'), 0, 0, W, H);
-    const robot = (txt) => {
+    const robot = (txt, withButton = true) => {
       panel(120, 470, W - 240, 200, { fill: 'rgba(235,245,255,.96)', line: '#1f3b5a' });
       drawFit(img('bg17'), 140, 330, 150, 180);
-      textBox(txt, 320, 490, W - 480, 160, { size: 36 });
+      textBox(txt, 310, 482, W - 450, withButton ? 110 : 176, { size: 36 });   // 로봇 오른쪽 빈 곳 한가운데 (버튼이 있으면 버튼 위)
     };
     if (this.state === 'intro') {
-      robot(this.q.intro[this.i]);
+      robot(this.q.intro[this.i], false);
       if (button('넘기기', W - 220, 20, 190, 60) || keyHit('Space', 'Enter')) { this.state = 'question'; }
       else if (input.clicked && input.clickY > 120) { this.t = 0; if (++this.i >= this.q.intro.length) this.state = 'question'; }
     } else if (this.state === 'question') {
@@ -759,10 +759,10 @@ export class RobotQuizScene {
       });
     } else if (this.state === 'wrong') {
       robot(this.msg);
-      if (button('다시 풀기', W - 300, 600, 220, 64) || keyHit('Enter', 'Space')) this.state = 'question';
+      if (button('다시 풀기', W - 360, 598, 220, 60) || keyHit('Enter', 'Space')) this.state = 'question';
     } else if (this.state === 'right') {
       if (!this.reveal.open) robot(this.q.right);
-      if (!this.reveal.open && (button('돌아가기', W - 300, 600, 220, 64) || keyHit('Enter', 'Space'))) go(this.back);
+      if (!this.reveal.open && (button('돌아가기', W - 360, 598, 220, 60) || keyHit('Enter', 'Space'))) go(this.back);
     }
     this.reveal.draw(1);
   }
