@@ -2,8 +2,8 @@
 import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
 import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash, soundPanel } from './widgets.js';
 
-export const SPIRIT_TITLES = ['독도의 높이편', '화산섬의 탄생순서', '독도와 울릉도의 거리편', '독도의 지하자원', '독도의 이름편 -1-', '독도의 이름편 -2-', '독도와 지도편', '독도의 역사편 -1-', '독도의 역사편 -2-', '독도와 일본편'];
-export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', '안용복편', '홍순칠편', '누군가가 고의로 버린 문서'];
+export const SPIRIT_TITLES = ['독도의 높이', '화산섬이 생긴 순서', '독도와 울릉도의 거리', '독도의 보물', '독도의 여러 이름', '옛 이름이 나오는 기록', '옛 지도 속 독도', '고려 시대 기록', '조선 시대 기록', '독도와 일본'];
+export const HERO_TITLES = ['이사부', '누군가 버리고 간 문서', '안용복', '홍순칠', '누군가 일부러 버린 문서'];
 const HERO_COST = [30, 50, 80, 120, 150];
 const HERO_PIC = [['hero_lee', ''], ['hero_leegyu', '이걸.. 찾았다네'], ['hero_ahn', ''], ['hero_hong', ''], ['hero_leegyu', '이걸.. 찾았다네']];
 export const spiritMemCost = () => 20;
@@ -219,14 +219,15 @@ export class HubScene {
     text('독도에서의 소중한 기억들', W / 2, 74, { size: 40, align: 'center', color: '#7a3b12' });
     const box = (x, title, desc, how, icon, frame, onClick) => {
       panel(x, 140, 500, 420, { fill: '#fff8ea' });
-      text(title, x + 250, 160, { size: 34, align: 'center' });
-      drawFit(img(icon), x + 150, 210, 200, 140, { frame });
-      textBox(desc, x + 30, 360, 440, 80, { size: 22 });
-      textBox(how, x + 30, 440, 440, 60, { size: 20, color: '#7a5a3a' });
+      text(title, x + 250, 160, { size: 36, align: 'center', color: '#7a3b12' });
+      drawFit(img(icon), x + 160, 206, 180, 130, { frame });
+      textBox(desc, x + 30, 346, 440, 76, { size: 25 });
+      ctx.fillStyle = 'rgba(122,59,18,.2)'; ctx.fillRect(x + 60, 428, 380, 2);
+      textBox(how, x + 30, 436, 440, 56, { size: 21, color: '#7a5a3a' });
       if (button('살펴보기', x + 150, 500, 200, 54, { layer: L, size: 26 })) onClick();
     };
-    box(130, '정령들과의 추억', '독도에 있으면서 귀여운 정령들을 많이 만났다.\n어디한번 정령들과의 추억을 살펴볼까?', '독도 포인트를 사용하는 곳입니다.\n달리고 구하고 풀어라! 게임으로 추억을 얻어요.', 'spirits', [0, 0, 160, 160], () => { this.panel = 'spiritMem'; });
-    box(650, '영웅들과의 추억', '독도에서 모르고 있었던 영웅들을 알게되었다.\n영웅들의 사진들을 다시한번 살펴볼까?', '독도 포인트를 사용하는 곳입니다.\n생물 카드 뒤집기 게임으로도 포인트를 모아요.', 'hero_lee', null, () => { this.panel = 'heroMem'; });
+    box(130, '정령들과의 추억', '독도에서 만난 정령들이\n독도 이야기를 들려줘요.', '스테이지를 깨고 독도 포인트로 퍼즐을 열어요.', 'spirits', [0, 0, 160, 160], () => { this.panel = 'spiritMem'; });
+    box(650, '영웅들과의 추억', '독도를 지킨 영웅들과\n수상한 문서 이야기를 읽어 봐요.', '독도 포인트로 퍼즐을 열어요.\n카드 뒤집기 게임으로 포인트를 모아요.', 'hero_lee', null, () => { this.panel = 'heroMem'; });
     drawPoints(130, 580, ['dp'], { w: 220 });
     if (button('닫기', W - 260, H - 130, 150, 56, { layer: L })) this.panel = null;
   }
@@ -395,7 +396,7 @@ export class HubScene {
       else { ctx.save(); ctx.globalAlpha = 0.6; drawFit(img('Lock'), cx + cw * 0.3, cy + (ch - 26) * 0.25, cw * 0.4, (ch - 26) * 0.4); ctx.restore(); }
       text(owned[i] ? (isChar ? c.title.split(' [')[0] : c.quote) : String(i + 1), cx + cw / 2, cy + ch - 24, { size: isChar ? 20 : 18, align: 'center' });
       if (hit(cx, cy, cw, ch, L)) {
-        if (owned[i]) this.reader.show(isChar ? { sub: '독도 캐릭터 카드 ' + (c.title.match(/\[.*\]/)?.[0] || ''), name: c.title.split(' [')[0], quote: c.quote, text: c.desc, image: cardPicName(c.pic) } : { sub: '독도 생물 카드 · ' + c.title, name: c.quote, text: c.desc, image: cardPicName(c.pic) });
+        if (owned[i]) this.reader.show(isChar ? { sub: '독도 캐릭터 카드 ' + (c.title.match(/\[.*\]/)?.[0] || ''), name: c.title.split(' [')[0], quote: c.quote, text: c.desc, image: cardPicName(c.pic) } : { sub: '독도 생물 카드 | ' + c.title.replace('독도의 ', ''), name: c.quote, text: c.desc, image: cardPicName(c.pic) });
         else if (save[cur] < price) this.notice.push(`독도 포인트가 ${fmt(price)}점 필요해요.\n${isChar ? '' : '파란 로봇의 퀴즈를 풀어도 생물 카드를 얻을 수 있어요!'}`, { face: 'dp' });
         else this.notice.push(`${i + 1}번 카드를 ${fmt(price)}점에 살까요?\n(카드의 가격은 점점 비싸져요)`, {
           buttons: ['사기', '취소'],

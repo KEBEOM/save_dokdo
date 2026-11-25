@@ -78,10 +78,22 @@ export class Reader {
     }
     // 글 칸: 사진 오른쪽 빈 곳
     const tx = x + (it.image ? 40 + picW + 44 : 50), tw = x + w - 50 - tx, ty = cy0, th = chh;
-    const qSize = 32, size = 27, lh = Math.round(size * 1.5), qlh = Math.round(qSize * 1.4);
+    const qSize = 32, size = 27, lh = Math.round(size * 1.55), qlh = Math.round(qSize * 1.4);
+    const hSize = 29, ind = 28;
+    // 글 꾸미기: '# 제목' 줄은 소제목, '- ' 줄은 글머리표(둘째 줄부터 들여쓰기), 빈 줄은 문단 사이 띄우기
     const rows = [];
-    if (it.quote) { for (const ln of wrap(it.quote, tw, qSize)) rows.push({ s: ln, size: qSize, h: qlh, color: '#2f6fa8' }); rows.push({ s: '', size, h: lh * 0.7 }); }
-    for (const ln of wrap(it.text || '', tw, size)) rows.push({ s: ln, size, h: lh, color: '#2b2b2b' });
+    if (it.quote) { for (const ln of wrap(it.quote, tw, qSize)) rows.push({ s: ln, size: qSize, h: qlh, color: '#2f6fa8' }); rows.push({ s: '', h: lh * 0.6 }); }
+    for (const raw of String(it.text || '').split('\n')) {
+      const ln = raw.trim();
+      if (!ln) { if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.55 }); continue; }
+      if (ln.startsWith('# ')) {
+        if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.35 });
+        wrap(ln.slice(2), tw, hSize).forEach(w => rows.push({ s: w, size: hSize, h: Math.round(hSize * 1.45), color: '#7a3b12' }));
+      } else if (ln.startsWith('- ')) {
+        wrap(ln.slice(2), tw - ind, size).forEach((w, k) => rows.push({ s: w, size, h: lh, color: '#2b2b2b', indent: ind, bullet: k === 0 }));
+      } else wrap(ln, tw, size).forEach(w => rows.push({ s: w, size, h: lh, color: '#2b2b2b' }));
+    }
+    while (rows.length && rows[rows.length - 1].s === '') rows.pop();
     const total = rows.reduce((a, r) => a + r.h, 0);
     const fits = total <= th;
     const maxScroll = fits ? 0 : total - th;
@@ -94,12 +106,18 @@ export class Reader {
       if (keyHit('ArrowUp')) this.scroll -= lh * 3;
     }
     this.scroll = Math.max(0, Math.min(maxScroll, this.scroll));
+    // 짧은 글은 빈 곳의 가로·세로 한가운데에 한 덩어리로 (줄은 왼쪽 맞춤이라 읽기 쉬움), 긴 글은 위에서부터 읽고 넘기기
+    let blockW = 0;
+    for (const r of rows) if (r.s) { ctx.font = font(r.size); blockW = Math.max(blockW, (r.indent || 0) + ctx.measureText(r.s).width); }
+    const bx = fits ? tx + Math.max(0, (tw - blockW) / 2) : tx;
     ctx.save();
     ctx.beginPath(); ctx.rect(tx - 4, ty, tw + 8, th); ctx.clip();
-    // 짧은 글은 빈 곳의 가로·세로 한가운데, 긴 글은 위에서부터 읽고 넘기기
     let yy = fits ? ty + (th - total) / 2 : ty - this.scroll;
     for (const r of rows) {
-      if (r.s && yy > ty - r.h && yy < ty + th) text(r.s, fits ? tx + tw / 2 : tx, yy, { size: r.size, color: r.color, align: fits ? 'center' : 'left' });
+      if (r.s && yy > ty - r.h && yy < ty + th) {
+        if (r.bullet) { ctx.fillStyle = '#c0703a'; ctx.beginPath(); ctx.arc(bx + 9, yy + r.size * 0.55, 5, 0, Math.PI * 2); ctx.fill(); }
+        text(r.s, bx + (r.indent || 0), yy, { size: r.size, color: r.color });
+      }
       yy += r.h;
     }
     ctx.restore();
