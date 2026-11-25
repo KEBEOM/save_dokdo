@@ -83,7 +83,7 @@ export class FinalBattleScene {
       const x = 60 + (k % 2) * 590, y = 436 + Math.floor(k / 2) * 112;
       let fill;
       if (this.state === 'feedback') fill = k === q.correct ? '#c8e6b0' : (k === this.result.picked ? '#f2c0b0' : '#e5dccb');
-      if (button(a, x, y, 570, 100, { size: 24, layer: this.state === 'question' ? L : 9, fill, minSize: 14 })) this.answer(k);
+      if (button(`${k + 1}. ${a}`, x, y, 570, 100, { size: 24, layer: this.state === 'question' ? L : 9, fill, minSize: 14 })) this.answer(k);
     });
     if (this.state === 'question') {
       if (button(`도와주세요! 독도아저씨! (힌트 ${this.hints})`, 60, 664, 470, 50, { size: 22 })) this.lib = true;
