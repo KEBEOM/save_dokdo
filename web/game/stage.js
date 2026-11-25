@@ -92,6 +92,8 @@ export class StageScene {
     this.weather = n === 1 ? 'clear' : wr < 0.4 ? 'clear' : wr < 0.7 ? 'rain' : 'snow';
     this.drops = Array.from({ length: this.weather === 'rain' ? 170 : this.weather === 'snow' ? 130 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: 0.6 + Math.random() * 0.8, ph: Math.random() * 6.3 }));
     this.splash = [];
+    // 하늘 구름 (하늘색과 같은 빛으로 물듦)
+    this.clouds = Array.from({ length: 7 }, (_, k) => ({ x: k * 360 + Math.random() * 200, y: 40 + Math.random() * 260, s: 0.7 + Math.random() * 0.7, v: 4 + Math.random() * 6 }));
     // 발밑에 발판이 없는 로봇(원작에서 허공·맵 밖에 놓인 로봇)은 가장 가까운 발판 위로 옮김
     for (const rb of this.robots) {
       const under = this.solids.some(s => rb.x >= s.x - 0.2 && rb.x <= s.x + s.w + 0.2 && s.y + s.h <= rb.y + 0.6);
@@ -395,6 +397,7 @@ export class StageScene {
       ctx.fillStyle = g; ctx.fillRect(700, sy - 230, 560, 460);
       ctx.fillStyle = `rgba(255,224,150,${dd})`; ctx.beginPath(); ctx.arc(980, sy, 46, 0, Math.PI * 2); ctx.fill();
     }
+    this.drawClouds(dd);
     const bg = img('stagebg');
     if (bg) {
       const bw = 1600, bh = bw * bg.height / bg.width;
@@ -522,6 +525,24 @@ export class StageScene {
         if (d.x < -10) d.x += W + 20; else if (d.x > W + 10) d.x -= W + 20;
         ctx.beginPath(); ctx.arc(d.x, d.y, 2 + 2.5 * d.s, 0, Math.PI * 2); ctx.fill();
       }
+    }
+    ctx.restore();
+  }
+  // 픽셀 구름: 원작 배경의 구름 모양을 흉내 낸 네모 조각들, 하늘 그라데이션과 같은 색감으로
+  drawClouds(dd) {
+    const base = this.weather === 'rain' ? mix('#b8c0c8', '#9a8a8e', dd) : this.weather === 'snow' ? mix('#f4f7fb', '#e8d8dc', dd) : mix('#ffffff', '#ffc2a0', dd);
+    const shade = this.weather === 'rain' ? mix('#9aa3ad', '#7a6a72', dd) : mix('#dceef8', '#f09a80', dd);
+    const shape = [[3, 0, 3, 1], [2, 1, 6, 1], [1, 2, 9, 1], [0, 3, 13, 2]];
+    const span = 7 * 360;
+    ctx.save(); ctx.globalAlpha = this.weather === 'rain' ? 0.9 : 0.85;
+    for (const c of this.clouds) {
+      const u = 10 * c.s;
+      let x = ((c.x + this.t * c.v - this.cam.x * U * 0.08) % span + span) % span - 300;
+      const y = c.y + clamp((this.cam.y - this.bounds.b) * 3, 0, 120);
+      for (const [bx, by, bw, bh] of shape) {
+        ctx.fillStyle = base; ctx.fillRect(Math.round(x + bx * u), Math.round(y + by * u), Math.round(bw * u), Math.round(bh * u));
+      }
+      ctx.fillStyle = shade; ctx.fillRect(Math.round(x), Math.round(y + 4.4 * u), Math.round(13 * u), Math.round(0.6 * u));
     }
     ctx.restore();
   }
