@@ -268,8 +268,8 @@ export class HubScene {
     const shown = save.shown[i];
     const s = spiritImage(i);
     panel(440, 100, 400, 280, { fill: '#2d3a45', inner: false });
-    ctx.save(); if (!shown) ctx.filter = 'brightness(0.25)';
-    { const [qx, qy] = spiritSquash(this.t, false); const bw = 260 * qx, bh = 260 * qy; drawImg(s.im, 640 - bw / 2, 370 - bh, bw, bh, { frame: s.frame }); }
+    ctx.save();
+    { const [qx, qy] = spiritSquash(this.t, false); const bw = 260 * qx, bh = 260 * qy; drawImg(s.im, 640 - bw / 2, 370 - bh, bw, bh, { frame: s.frame, shade: shown ? null : '#000' }); }
     ctx.restore();
     if (!shown) drawFit(img('Lock'), 580, 180, 120, 120);
     text(`${i + 1} / 10`, 820, 108, { size: 22, align: 'right', color: '#f4e3c3' });

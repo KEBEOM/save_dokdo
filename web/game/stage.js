@@ -44,9 +44,7 @@ export class StageSelectScene {
       const x = 150 + (i % 5) * 205, y = 160 + Math.floor(i / 5) * 250;
       const open = i + 1 <= save.unlockedStage;
       const bob = open ? Math.sin(this.t * 2 + i) * 4 : 0;
-      ctx.save(); if (!open) ctx.filter = 'grayscale(1) brightness(.6)';
-      drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160);
-      ctx.restore();
+      drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
       if (save.rescued[i]) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
       panel(x + 20, y + 168, 120, 46, { r: 8, inner: false, lw: 3 });
@@ -585,14 +583,12 @@ export class StageScene {
       const key = this.keys.find(q => q.n === k), got = key && key.got;
       const x = 14 + (k - 1) * 66, y = 74;
       panel(x, y, 58, 58, { r: 8, inner: false, fill: got ? '#fff2d6' : '#bdb3a2', lw: 3 });
-      ctx.save(); if (!got) ctx.filter = 'grayscale(1) brightness(.5)';
-      drawFit(img('dokdo_icon'), x + 4, y + 4, 50, 50, { frame: [160, 0, 160, 160] });
-      ctx.restore();
+      drawFit(img('dokdo_icon'), x + 4, y + 4, 50, 50, { frame: [160, 0, 160, 160], shade: got ? null : '#000' });   // 못 얻은 열쇠는 검정 그림자
       if (got && hit(x, y, 58, 58, 0)) this.modal = { type: 'key', n: k };
     }
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
-    if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); ctx.save(); if (!save.rescued[this.n - 1]) ctx.filter = 'brightness(.2)'; if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50); ctx.restore(); }
+    if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: save.rescued[this.n - 1] ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
     if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
     // 터치 버튼

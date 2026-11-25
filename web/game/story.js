@@ -111,7 +111,7 @@ export class StoryScene {
       const im = img(c.img);
       if (!im) continue;
       if (c.shadow) {
-        ctx.save(); ctx.filter = 'brightness(0)'; drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame }); ctx.restore();
+        drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame, shade: '#000' });
       } else drawFit(im, c.x, c.y, c.w, c.h, { frame: c.frame });
     }
     if (p.statue) drawFit(img('statue'), 860, 70, 300, 300);

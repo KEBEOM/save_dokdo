@@ -136,8 +136,32 @@ export function preload(names) {
     e.im.addEventListener('error', res, { once: true });
   })));
 }
+// 그림 모양 그대로 한 가지 색으로 칠한 그림자 (원작에서 아직 얻지 못한 열쇠·정령을 검정으로 가린 방식)
+// 캔버스 필터를 쓰지 않아 아이폰 사파리에서도 똑같이 보임
+const shadeCache = new Map();
+function shaded(im, frame, color) {
+  const key = (im.src || '') + '|' + (frame || []).join(',') + '|' + color;
+  let c = shadeCache.get(key);
+  if (!c && im.width) {
+    const [fx, fy, fw, fh] = frame || [0, 0, im.width, im.height];
+    c = document.createElement('canvas'); c.width = fw; c.height = fh;
+    const g = c.getContext('2d');
+    g.drawImage(im, fx, fy, fw, fh, 0, 0, fw, fh);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, fw, fh);
+    shadeCache.set(key, c);
+  }
+  return c;
+}
 export function drawImg(im, x, y, w, h, opts = {}) {
   if (!im) return;
+  if (opts.shade) {
+    // shade: 검정 그림자, shadeAlpha: 원래 그림 위에 그림자를 얼마나 덮을지 (1 = 완전히 검정)
+    const c = shaded(im, opts.frame, opts.shade);
+    if (!c) return;
+    const a = opts.shadeAlpha ?? 1;
+    if (a < 1) drawImg(im, x, y, w, h, { ...opts, shade: null });
+    return drawImg(c, x, y, w, h, { flip: opts.flip, alpha: (opts.alpha ?? 1) * a });
+  }
   ctx.save();
   if (opts.alpha !== undefined) ctx.globalAlpha *= opts.alpha;
   if (opts.flip) { ctx.translate(x + w, y); ctx.scale(-1, 1); x = 0; y = 0; }
