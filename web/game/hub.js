@@ -12,6 +12,30 @@ export const cardPrice = buys => 30 + 10 * buys;    // 캐릭터·생물 카드 
 const SPIRIT_FRAMES = [0, 0, 1, 2, 7, 5, 4, 6, 3, 8];
 // 그림이 오른쪽을 보고 있는 정령 (독도 강치, 괭이갈매기). 나머지는 왼쪽을 봄
 
+// 마을에서 정령이 다닐 수 있는 곳 (정령 몸 가운데 기준) — 석상 뒤쪽 풀밭까지
+const AREA = { x0: 250, x1: 1030, y0: 160, y1: 640 };
+// 버튼·글씨 위로는 올라가지 않게 피하는 곳: 정령 구출하기 아이콘, 석상 이름표·안내 글
+const AVOID = [{ x0: 240, x1: 470, y0: 100, y1: 365 }, { x0: 470, x1: 810, y0: 430, y1: 525 }];
+const STATUE_FEET = 444;   // 이 줄보다 위(뒤)에 선 정령은 석상 뒤에 가려짐
+function keepInVillage(w) {
+  if (w.x < AREA.x0 || w.x > AREA.x1) { w.vx = -(w.vx || 0); w.x = Math.max(AREA.x0, Math.min(AREA.x1, w.x)); }
+  if (w.y < AREA.y0 || w.y > AREA.y1) { w.vy = -(w.vy || 0); w.y = Math.max(AREA.y0, Math.min(AREA.y1, w.y)); }
+  for (const z of AVOID) {
+    if (w.x > z.x0 && w.x < z.x1 && w.y > z.y0 && w.y < z.y1) {
+      // 가장 가까운 가장자리로 밀어내고 반대로 돌아섬
+      const d = [w.x - z.x0, z.x1 - w.x, w.y - z.y0, z.y1 - w.y], m = Math.min(...d);
+      if (m === d[0]) w.x = z.x0; else if (m === d[1]) w.x = z.x1; else if (m === d[2]) w.y = z.y0; else w.y = z.y1;
+      w.vx = -(w.vx || 0); w.vy = -(w.vy || 0);
+    }
+  }
+}
+function randomSpot() {
+  for (let k = 0; k < 50; k++) {
+    const w = { x: AREA.x0 + Math.random() * (AREA.x1 - AREA.x0), y: AREA.y0 + Math.random() * (AREA.y1 - AREA.y0) };
+    if (!AVOID.some(z => w.x > z.x0 - 30 && w.x < z.x1 + 30 && w.y > z.y0 - 30 && w.y < z.y1 + 30)) return w;
+  }
+  return { x: 640, y: 600 };
+}
 export function spiritImage(i) {
   return i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
 }
@@ -61,7 +85,7 @@ export class HubScene {
     audio.play('quiet_forest');
     this.walkers = [];
     save.shown.forEach((on, i) => {
-      if (on) this.walkers.push({ i, x: 270 + ((i * 0.618) % 1) * 720, y: 572 + (i % 4) * 28, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
+      if (on) this.walkers.push({ i, ...randomSpot(), vx: 0, vy: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
     });
   }
   get layer() { return soundPanel.isOpen ? 5 : this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
@@ -73,21 +97,23 @@ export class HubScene {
       if (w.touch > 0) w.touch = Math.max(0, w.touch - dt);
       if (w.held) continue;                                   // 손으로 들고 있는 정령은 걷지 않음
       w.tNext -= dt;
-      if (w.tNext <= 0) { w.vx = w.vx ? 0 : (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); w.tNext = 1 + Math.random() * 2.5; }
-      w.x += w.vx * dt;
-      if (w.x < 260 || w.x > 1000) { w.vx = -w.vx; w.x = Math.max(260, Math.min(1000, w.x)); }   // 양옆 버튼(카드·독도 구출하러 가기)에 겹치지 않게
-      if (w.vx) w.flip = w.vx < 0;   // 정령 그림은 모두 오른쪽을 보고 있음
+      if (w.tNext <= 0) {
+        // 쉬었다가, 아무 방향으로나 걸어감 (위아래는 조금 느리게 → 앞뒤로 걷는 느낌)
+        if (w.vx || w.vy) { w.vx = 0; w.vy = 0; }
+        else { const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 40; w.vx = Math.cos(a) * sp; w.vy = Math.sin(a) * sp * 0.6; }
+        w.tNext = 1 + Math.random() * 2.5;
+      }
+      w.x += w.vx * dt; w.y += w.vy * dt;
+      keepInVillage(w);
+      if (Math.abs(w.vx) > 3) w.flip = w.vx < 0;   // 정령 그림은 모두 오른쪽을 보고 있음
     }
     // 정령끼리 너무 붙으면 서로 살짝 비켜서기 (겹쳐 보이지 않게)
     for (const a of this.walkers) for (const b of this.walkers) {
       if (a === b || a.held || b.held) continue;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      if (Math.abs(dx) < 78 && Math.abs(dy) < 60) { const push = (78 - Math.abs(dx)) * 0.5 * Math.min(1, dt * 6) * (dx >= 0 ? 1 : -1); a.x -= push; b.x += push; }
+      const dx = b.x - a.x, dy = (b.y - a.y) * 1.6, d = Math.hypot(dx, dy) || 1;
+      if (d < 78) { const push = (78 - d) * 0.5 * Math.min(1, dt * 6); a.x -= dx / d * push; b.x += dx / d * push; a.y -= dy / d * push * 0.6; b.y += dy / d * push * 0.6; }
     }
-    for (const w of this.walkers) {
-      if (w.held) continue;
-      w.x = Math.max(260, Math.min(1000, w.x));
-    }
+    for (const w of this.walkers) if (!w.held) keepInVillage(w);
     if (this.bubble) { this.bubble.t -= dt; if (this.bubble.t <= 0) this.bubble = null; }
   }
   draw() {
@@ -96,6 +122,9 @@ export class HubScene {
     ctx.fillStyle = 'rgba(255,240,200,.08)'; ctx.fillRect(0, 0, W, H);
     drawPoints(20, 20, ['dp'], { w: 220 });
 
+    // 석상보다 뒤(위쪽)에 있는 정령은 석상보다 먼저 그려서 석상에 가려지게
+    const order = [...this.walkers].sort((a, b) => a.y - b.y);
+    for (const w of order) if (w.y + 40 < STATUE_FEET && !w.held) this.drawWalker(w);
     // 독도 석상
     if (iconButton(img('statue'), '독도 석상', 420, 22, 440, 440, { layer: 0 })) this.panel = 'memories';   // 예전의 2배 크기
     text('퍼즐을 열고 독도에 대하여 알아봅시다', 640, 504, { size: 20, align: 'center', color: '#fff', stroke: 'rgba(0,0,0,.6)', strokeW: 4 });
@@ -109,22 +138,10 @@ export class HubScene {
     // 독도 구출하러 가기
     if (iconButton(img('dokdo_icon'), '독도 구출하러 가기', 1060, 400, 170, 170, { layer: 0, frame: [160, 0, 160, 160], bob: true })) go(nav.select());
 
-    // 마을에 나온 정령들
-    for (const w of [...this.walkers].sort((a, b) => a.y - b.y)) {
-      const s = spiritImage(w.i);
-      // 원작처럼 몸을 늘였다 줄였다 (발바닥 기준)
-      const [sx, sy] = w.held ? [1.08, 1.08] : spiritSquash(this.t + w.i * 0.37, !!w.vx, w.touch || 0);
-      const lift = w.held ? 18 : 0;
-      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
-      drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
-      if (!this.dropped && !w.held && hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
-    }
-    if (this.bubble) {
-      const b = this.bubble, w = 420;
-      const bx = Math.max(10, Math.min(W - w - 10, b.x - w / 2)), by = Math.max(10, b.y - 170);
-      panel(bx, by, w, 110, { r: 14, fill: '#fff' });
-      textBox(b.msg, bx + 16, by + 8, w - 32, 94, { size: 24 });
-    }
+    // 마을에 나온 정령들 (석상 앞쪽, 들고 있는 정령은 맨 앞)
+    for (const w of order) if (w.y + 40 >= STATUE_FEET && !w.held) this.drawWalker(w);
+    for (const w of order) if (w.held) this.drawWalker(w);
+    this.drawBubble();
     if (button('처음 화면', W - 170, 20, 150, 54, { size: 22 })) go(nav.title());
     soundButton();
 
@@ -133,6 +150,26 @@ export class HubScene {
     this.notice.draw(3);
     this.reveal.draw(4);
     soundPanel.draw(5);
+  }
+  // 정령 하나 그리기 (발바닥 기준으로 늘였다 줄였다, 누르면 말하기)
+  drawWalker(w) {
+    const s = spiritImage(w.i);
+    // 원작처럼 몸을 늘였다 줄였다 (발바닥 기준)
+    const [sx, sy] = w.held ? [1.08, 1.08] : spiritSquash(this.t + w.i * 0.37, !!(w.vx || w.vy), w.touch || 0);
+    const lift = w.held ? 18 : 0;
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
+    drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
+    // 석상 뒤에 가려진 부분을 누르면 석상이 열리도록, 정령은 보이는 곳만 눌림
+    const behind = w.y + 40 < STATUE_FEET && inside(input.clickX, input.clickY, 559, 70, 158, 374);
+    if (!this.dropped && !w.held && !behind && hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
+  }
+  drawBubble() {
+    if (this.bubble) {
+      const b = this.bubble, w = 420;
+      const bx = Math.max(10, Math.min(W - w - 10, b.x - w / 2)), by = Math.max(10, b.y - 170);
+      panel(bx, by, w, 110, { r: 14, fill: '#fff' });
+      textBox(b.msg, bx + 16, by + 8, w - 32, 94, { size: 24 });
+    }
   }
   // 정령을 꾹 누르고(0.35초) 있으면 들어 올려 원하는 곳으로 옮길 수 있음
   updateDrag(dt) {
@@ -148,13 +185,13 @@ export class HubScene {
       pr.t += dt;
       if (!pr.grab && pr.t > 0.35) { pr.grab = true; pr.w.held = true; pr.w.vx = 0; audio.sfx('click'); }
       if (pr.grab) {
-        const nx = Math.max(260, Math.min(1000, input.x));
+        const nx = Math.max(AREA.x0, Math.min(AREA.x1, input.x));
         if (nx < pr.w.x - 1) pr.w.flip = true; else if (nx > pr.w.x + 1) pr.w.flip = false;   // 옮기는 쪽을 바라봄
         pr.w.x = nx;
-        pr.w.y = Math.max(520, Math.min(640, input.y - 10));   // 발이 마을 풀밭 안에 오도록
+        pr.w.y = Math.max(AREA.y0, Math.min(AREA.y1, input.y - 10));   // 마을 풀밭 안에서만
       }
     } else {
-      if (pr.grab) { pr.w.held = false; pr.w.tNext = 2 + Math.random() * 2; pr.w.touch = 0.25; this.dropped = true; }
+      if (pr.grab) { keepInVillage(pr.w); pr.w.vx = pr.w.vy = 0; pr.w.held = false; pr.w.tNext = 2 + Math.random() * 2; pr.w.touch = 0.25; this.dropped = true; }
       this.press = null;
     }
   }
@@ -329,7 +366,7 @@ export class HubScene {
       onClose: k => {
         if (k !== 0) return;
         save[kind] -= cost; save.shown[i] = true; persist(); audio.sfx('good');
-        this.walkers.push({ i, x: 640, y: 572 + (i % 4) * 28, vx: 0, tNext: 1, clicks: 0, flip: false });
+        this.walkers.push({ i, x: 640, y: 600, vx: 0, vy: 0, tNext: 1, clicks: 0, flip: false });
       },
     });
   }

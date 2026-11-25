@@ -245,7 +245,7 @@ export class StageScene {
       // 로봇 소리: 종류마다 다른 소리를 가끔 냄 (가까우면 크게, 멀면 작게)
       rb.beep = (rb.beep ?? Math.random() * 2.5) - dt;
       if (rb.beep <= 0) {
-        rb.beep = 1.4 + Math.random() * 1.6;
+        rb.beep = 1.0 + Math.random() * 1.3;
         if (!rb.solved && !(rb.appear > 0)) { const sp = this.near(rb.x, rb.y); if (sp.vol > 0.03) audio.sfx(rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : rb.blue ? 'robo_blue' : 'robo_red', sp); }
       }
       // 갈색 로봇: 주인공에게 보호막이 있으면 던지지 않고 가만히 서 있음
@@ -410,10 +410,10 @@ export class StageScene {
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-6, 0); ctx.lineTo(-9, 4); ctx.closePath(); ctx.fill(); ctx.stroke();     // 몸통 접힘
     ctx.restore();
   }
-  // 소리 위치: 주인공과 가까울수록 크게(13칸 넘으면 안 들림), 왼쪽·오른쪽에서 들리게
+  // 소리 위치: 주인공과 가까울수록 크게(3칸 안은 최대, 14칸 넘으면 안 들림), 왼쪽·오른쪽에서 들리게
   near(x, y) {
     const p = this.p, d = Math.hypot(x - p.x, (y - p.y) * 1.3);
-    return { vol: Math.pow(Math.max(0, 1 - d / 13), 1.3), pan: Math.max(-1, Math.min(1, (x - p.x) / 9)) };
+    return { vol: d < 3 ? 1 : Math.max(0, 1 - (d - 3) / 11), pan: Math.max(-1, Math.min(1, (x - p.x) / 9)) };   // 3칸 안은 최대, 14칸에서 0
   }
   throwStone(rb) {
     const p = this.p, g = GRAV * 0.55;

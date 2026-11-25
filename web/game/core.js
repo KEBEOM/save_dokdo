@@ -333,7 +333,7 @@ export const audio = {
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
-    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); } catch (_) {}
     if (this.music && this.music.paused && !this.muted) this.music.play().catch(() => {});
   },
   play(name, loop = true) {
@@ -359,6 +359,7 @@ export const audio = {
   // 효과음 (파일 없이 소리 합성). opts.vol: 0~1 크기 배율(거리에 따라), opts.pan: -1(왼쪽) ~ 1(오른쪽)
   sfx(kind, opts = {}) {
     if (this.muted || !this.ctx || this.sfxVol <= 0) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});   // 브라우저가 소리를 멈춰 뒀으면 다시 켬
     const sv = this.sfxVol * 1.25 * (opts.vol ?? 1);   // 효과음 크기
     if (sv < 0.01) return;
     const c = this.ctx, t = c.currentTime;
@@ -399,11 +400,11 @@ export const audio = {
       case 'plane': noise(0.35, 0.05, 0, 1800, 3); tone(500, 0.3, 'sine', 0.03, 0, 300); break;              // 종이비행기 휙
       case 'thud': noise(0.06, 0.2, 0, 2800, 0.9); noise(0.05, 0.15, 0.05, 1800, 0.9); break;                  // 종이 바스락 (떨어짐)
       // 로봇 소리 (가까울수록 크게)
-      case 'robo_red': [880, 1320, 880, 1320].forEach((f, i) => tone(f, 0.045, 'square', 0.035, i * 0.05)); break;   // 삐리릭
-      case 'robo_green': tone(150, 0.28, 'sawtooth', 0.04, 0, 60); tone(300, 0.12, 'square', 0.02, 0.18); break;      // 부르릉
-      case 'robo_brown': tone(600, 0.16, 'triangle', 0.045, 0, 350); tone(950, 0.1, 'triangle', 0.03, 0.17, -200); break; // 휘리릭 (휘파람)
-      case 'robo_blue': tone(700, 0.08, 'sine', 0.05); tone(1050, 0.12, 'sine', 0.04, 0.09); break;                  // 띠-띠
-      case 'boing': tone(260, 0.22, 'triangle', 0.07, 0, 420); break;                                              // 파란 로봇이 뜀
+      case 'robo_red': [1046, 1568, 1046, 1568, 1318].forEach((f, i) => tone(f, 0.05, 'square', 0.11, i * 0.055)); break;   // 삐리리릭
+      case 'robo_green': tone(140, 0.3, 'sawtooth', 0.12, 0, 70); tone(880, 0.06, 'square', 0.08, 0.3); tone(1320, 0.06, 'square', 0.08, 0.37); break;   // 부르릉 삐빅
+      case 'robo_brown': tone(700, 0.16, 'triangle', 0.14, 0, 400); tone(1100, 0.12, 'triangle', 0.11, 0.17, -300); break;   // 휘리릭 (휘파람)
+      case 'robo_blue': tone(1320, 0.07, 'square', 0.09); tone(990, 0.07, 'square', 0.09, 0.09); tone(1320, 0.1, 'square', 0.08, 0.18); break;   // 삐빅삐
+      case 'boing': tone(260, 0.22, 'triangle', 0.14, 0, 420); break;                                              // 파란 로봇이 뜀
       case 'buy': [659, 880, 1318].forEach((f, i) => tone(f, 0.1, 'square', 0.05, i * 0.06)); break;
     }
   },
