@@ -7,6 +7,7 @@ const U = 64;                 // 1 유닛 = 64px
 const GRAV = 9.81 * 3, JUMP = 12, SPEED = 5, MAXFALL = 22;
 const PW = 0.5, PH = 0.62;    // 주인공 충돌 상자 (원래 게임: 반지름 0.3 원)
 const ROBOT_R = 0.38;
+const SHIELD_MAX = 2;          // 보호막은 최대 2겹
 
 // 9스테이지 로보킹 문제: 원래 게임 연결에서는 '시마네현 고시'가 정답으로 되어 있었지만,
 // 힌트(세종실록지리지)와 사실에 맞게 '세종실록'을 정답으로 고침
@@ -254,7 +255,7 @@ export class StageScene {
         else if (rb.idle) { rb.idle = false; rb.vx = rb.saveVx || rb.speed; rb.tt = 0.8; }
       }
       // 초록 로봇(종이 뭉치)·갈색 로봇(종이비행기): 주인공이 가까우면 멈춰서 던짐
-      if ((rb.green || (rb.brown && !p.shields.includes(rb.i))) && !(rb.appear > 0)) {   // 갈색 로봇은 자기가 준 보호막이 깨지면 다시 던짐
+      if ((rb.green || (rb.brown && !p.shields.includes(rb.i) && p.shields.length < SHIELD_MAX)) && !(rb.appear > 0)) {   // 갈색 로봇은 자기가 준 보호막이 깨지면 다시 던짐 (보호막이 가득 차면 쉼)
         const dx = p.x - rb.x, dy = p.y - rb.y;
         if (rb.wind > 0) {
           rb.wind -= dt; rb.look = Math.sign(dx) || 1;
@@ -299,7 +300,7 @@ export class StageScene {
         // 종이비행기에 맞으면 보호막 하나 (이미 있으면 그냥 사라짐)
         if (Math.abs(st.x - p.x) < 0.5 && Math.abs(st.y - (p.y - 0.07)) < 0.55) {
           st.dead = true;
-          if (!p.shields.includes(st.from)) { p.shields.push(st.from); audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }   // 갈색 로봇마다 한 겹씩 쌓임
+          if (!p.shields.includes(st.from) && p.shields.length < SHIELD_MAX) { p.shields.push(st.from); audio.sfx('shield'); this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true }); }   // 갈색 로봇마다 한 겹씩 쌓임
         }
         continue;
       }
