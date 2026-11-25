@@ -265,7 +265,7 @@ export class StageScene {
         if (p.shield) {
           // 보호막이 대신 막아 줌: 보호막만 깨지고 살짝 튕겨 나감
           p.shield = false; p.blink = 1.2; audio.sfx('pop');
-          p.kb = 0.3; p.kbv = (Math.sign(p.x - rb.x) || 1) * 7; p.vy = Math.max(p.vy, 6);
+          p.kb = 0.25; p.kbv = (Math.sign(p.x - rb.x) || 1) * 5; p.vy = Math.max(p.vy, 4.5);   // 살짝만 튕김
           this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true });
         } else {
           audio.sfx('hurt');
@@ -413,7 +413,7 @@ export class StageScene {
     audio.sfx('throw');
   }
   respawn() {
-    const p = this.p; p.kb = 0;
+    const p = this.p; p.kb = 0;   // 보호막(p.shield)은 떨어져서 다시 시작해도 그대로 남음
     p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2; p.lastGround = p.y;
   }
   touchDoor() {
