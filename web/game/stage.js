@@ -631,7 +631,13 @@ export class StageScene {
     ctx.fillStyle = '#e0a800';
     for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
-    for (const rb of this.robots) if (rb.q && !rb.solved) dot(rb.x, rb.y, 3, '#3b8ede'); else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60'); else if (rb.brown) dot(rb.x, rb.y, 2.5, '#9a6a3a'); else if (!rb.blue) dot(rb.x, rb.y, 2, '#c0392b');
+    for (const rb of this.robots) {
+      if (rb.q) { if (rb.solved) dot(rb.x, rb.y, 2.5, '#9fb6c9'); else { dot(rb.x, rb.y, 4, '#fff'); dot(rb.x, rb.y, 3, '#1f6fc4'); } }   // 문제 로봇: 진한 파랑(풀면 흐리게)
+      else if (rb.blue) dot(rb.x, rb.y, 2.5, '#4aa3e8');      // 뛰어오르는 파란 장애물 로봇
+      else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60');
+      else if (rb.brown) dot(rb.x, rb.y, 2.5, '#9a6a3a');
+      else dot(rb.x, rb.y, 2, '#c0392b');
+    }
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
     if (this.door) dot(this.door.x, this.door.y, 4, this.door.open ? '#999' : '#8e44ad');
