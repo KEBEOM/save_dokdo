@@ -156,8 +156,24 @@ export function generateLevel(orig, n) {
     return base;
   }
   const at = f => path[clampN(Math.floor(path.length * f), 0, path.length - 1)];
-  const keyPlats = [0.22, 0.5, 0.78].map(f => (Math.random() < 0.5 + 0.4 * e ? bonusAbove(at(f + rand(-0.05, 0.05))) : at(f)));
-  const spiritPlat = bonusAbove(at(rand(0.55, 0.9)));
+  // 열쇠 3개와 정령은 서로 다른 발판에, 서로 3칸 넘게 떨어뜨려 놓기 (겹치지 않게)
+  const takenBase = new Set(), itemSpots = [];
+  const far = p => itemSpots.every(([ix, iy]) => Math.hypot(ix - (p.x0 + p.w / 2), iy - p.top) > 3);
+  function placeItem(f, bonusChance) {
+    const want = f * path.length;
+    const order = path.map((p, i) => i).sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
+    for (const i of order) {
+      const base = path[i];
+      if (takenBase.has(base) || !far(base)) continue;
+      const p = Math.random() < bonusChance ? bonusAbove(base) : base;
+      if (p !== base && !far(p)) continue;
+      takenBase.add(base); itemSpots.push([p.x0 + p.w / 2, p.top]);
+      return p;
+    }
+    return at(f);
+  }
+  const keyPlats = [0.22, 0.5, 0.78].map(f => placeItem(f + rand(-0.05, 0.05), 0.5 + 0.4 * e));
+  const spiritPlat = placeItem(rand(0.55, 0.9), 1);
 
   // 타일·충돌 상자로 바꾸기
   const platforms = [];
