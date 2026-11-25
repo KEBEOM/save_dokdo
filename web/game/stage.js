@@ -1,6 +1,6 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
 import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp } from './core.js';
-import { nav, Notice, CardReveal, spiritSquash } from './widgets.js';
+import { nav, Notice, CardReveal, spiritSquash, soundPanel } from './widgets.js';
 import { generateLevel } from './levelgen.js';
 
 const U = 64;                 // 1 유닛 = 64px
@@ -473,7 +473,7 @@ export class StageScene {
     drawImg(im, px - s / 2, py - s / 2, s, s, { frame, flip, alpha });
   }
   draw() {
-    const layer = this.notice.open ? 2 : this.modal ? 1 : 0;
+    const layer = soundPanel.isOpen ? 3 : this.notice.open ? 2 : this.modal ? 1 : 0;
     beginUI(layer);
     // 배경: 스테이지가 오를수록 아침 → 한낮 → 노을 → 해질녘 → 밤 (비·눈 오는 날은 그 날씨 그림)
     const dd = this.diff;
@@ -568,6 +568,7 @@ export class StageScene {
     this.drawMinimap();
     if (this.modal) this.drawModal();
     this.notice.draw(2);
+    soundPanel.draw(3);
   }
   // 비·눈: 화면 위에 그리는 알갱이 (카메라가 움직이면 같이 밀림)
   drawWeather() {
@@ -768,9 +769,9 @@ export class StageScene {
     } else if (m.type === 'pause') {
       panel(W / 2 - 230, 180, 460, 360);
       text('잠깐 멈춤', W / 2, 206, { size: 40, align: 'center' });
-      if (button('계속하기', W / 2 - 160, 280, 320, 70, { layer: L, size: 30 }) || keyHit('Escape')) close();
+      if (button('계속하기', W / 2 - 160, 280, 320, 70, { layer: L, size: 30 }) || (keyHit('Escape') && !soundPanel.isOpen)) close();
       if (button('스테이지 메뉴로', W / 2 - 160, 370, 320, 70, { layer: L, size: 30 })) go(nav.stageSelect());
-      if (button(audio.muted ? '소리 켜기' : '소리 끄기', W / 2 - 160, 460, 320, 60, { layer: L, size: 26 })) audio.toggleMute();
+      if (button('소리 설정', W / 2 - 160, 460, 320, 60, { layer: L, size: 26 })) soundPanel.open();
     } else if (m.type === 'clear') {
       panel(W / 2 - 330, 150, 660, 420);
       text(`스테이지${this.n} 클리어!`, W / 2, 190, { size: 54, align: 'center', color: '#3d7a2a' });

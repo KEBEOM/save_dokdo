@@ -232,3 +232,40 @@ export function spiritSquash(t, walking, touchLeft = 0) {
   const f = (1 - Math.cos((t % period) / period * Math.PI * 2)) / 2;   // 0 → 1 → 0 (부드럽게)
   return [1 + amp * f, 1 - amp * f];
 }
+
+// 소리 설정 창: 배경음·효과음 크기를 막대로 조절 (끌기, 누르기, －/＋)
+class SoundPanel {
+  constructor() { this.isOpen = false; this.drag = null; }
+  open() { this.isOpen = true; }
+  get open_() { return this.isOpen; }
+  draw(layer) {
+    if (!this.isOpen) return;
+    dim(0.55);
+    const w = 720, h = 360, x = (W - w) / 2, y = (H - h) / 2;
+    panel(x, y, w, h);
+    text('소리 설정', W / 2, y + 26, { size: 40, align: 'center', color: '#7a3b12' });
+    const rows = [['music', '배경음'], ['sfx', '효과음']];
+    rows.forEach(([k, label], i) => {
+      const ry = y + 110 + i * 100, bx = x + 228, bw = 300;   // 이름 | － | 막대 | ＋ | 크기
+      const v = k === 'music' ? audio.musicVol : audio.sfxVol;
+      text(label, x + 40, ry - 4, { size: 30 });
+      // 막대
+      const by = ry + 14;
+      ctx.fillStyle = '#d9cdb8'; rrect(bx, by - 8, bw, 16, 8); ctx.fill();
+      ctx.fillStyle = k === 'music' ? '#6aa84f' : '#3b8ede'; rrect(bx, by - 8, Math.max(16, bw * v), 16, 8); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3a2f28'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(bx + bw * v, by, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      text(v <= 0 ? '끔' : Math.round(v * 100) + '%', x + w - 36, ry - 2, { size: 26, align: 'right' });
+      if (layer === ui.top) {
+        if (input.pressed && inside(input.x, input.y, bx - 20, by - 26, bw + 40, 52)) this.drag = { k, bx, bw };
+        if (this.drag && this.drag.k === k && input.down) audio.setVolume(k, (input.x - bx) / bw);
+      }
+      if (button('－', bx - 76, ry - 12, 52, 52, { layer, size: 30 })) { audio.setVolume(k, v - 0.1); if (k === 'sfx') audio.sfx('coin'); }
+      if (button('＋', bx + bw + 24, ry - 12, 52, 52, { layer, size: 30 })) { audio.setVolume(k, v + 0.1); if (k === 'sfx') audio.sfx('coin'); }
+    });
+    if (!input.down && this.drag) { if (this.drag.k === 'sfx') audio.sfx('coin'); this.drag = null; }
+    if (button('닫기', W / 2 - 90, y + h - 84, 180, 60, { layer, size: 28 }) || keyHit('Escape')) { this.isOpen = false; this.drag = null; }
+  }
+}
+
+export const soundPanel = new SoundPanel();   // 어느 화면에서 열어도 같은 창

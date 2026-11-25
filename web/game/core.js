@@ -314,8 +314,22 @@ export function button(label, x, y, w, h, opts = {}) {
 }
 
 // ---------------------------------------------------------------- 소리
+// 소리 크기 설정 (배경음·효과음 따로, 0~1). 저장 기록과 따로 브라우저에 보관해서 '처음부터 하기'를 해도 유지
+const SOUND_KEY = 'saveDokdo.sound';
+const soundPref = (() => { try { return { music: 0.7, sfx: 0.8, ...JSON.parse(localStorage.getItem(SOUND_KEY) || '{}') }; } catch (_) { return { music: 0.7, sfx: 0.8 }; } })();
 export const audio = {
   ctx: null, music: null, musicName: null, muted: false, unlocked: false,
+  musicVol: soundPref.music, sfxVol: soundPref.sfx,
+  setVolume(kind, v) {
+    v = Math.max(0, Math.min(1, Math.round(v * 20) / 20));   // 5% 단위
+    if (kind === 'music') { this.musicVol = v; this.applyMusic(); } else this.sfxVol = v;
+    try { localStorage.setItem(SOUND_KEY, JSON.stringify({ music: this.musicVol, sfx: this.sfxVol })); } catch (_) {}
+  },
+  applyMusic() {
+    const a = this.music; if (!a) return;
+    a.volume = 0.65 * this.musicVol;
+    if (this.musicVol <= 0 || this.muted) a.pause(); else if (this.unlocked && a.paused && !(a.ended && !a.loop)) a.play().catch(() => {});
+  },
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
@@ -332,9 +346,9 @@ export const audio = {
     this.musicName = name;
     if (!name) return;
     const a = new Audio(`assets/music/${name}.mp3`);
-    a.loop = loop; a.volume = 0.45;
+    a.loop = loop; a.volume = 0.65 * this.musicVol;
     this.music = a;
-    if (this.unlocked && !this.muted) a.play().catch(() => {});
+    if (this.unlocked && !this.muted && this.musicVol > 0) a.play().catch(() => {});
   },
   stop() { if (this.music) { this.music.pause(); this.music = null; } this.musicName = null; },
   toggleMute() {
@@ -343,13 +357,14 @@ export const audio = {
   },
   // 간단한 효과음 (파일 없이 소리 합성)
   sfx(kind) {
-    if (this.muted || !this.ctx) return;
+    if (this.muted || !this.ctx || this.sfxVol <= 0) return;
+    const sv = this.sfxVol * 1.25;   // 효과음 크기
     const c = this.ctx, t = c.currentTime;
     const tone = (freq, dur, type = 'square', vol = 0.08, when = 0, slide = 0) => {
       const o = c.createOscillator(), g = c.createGain();
       o.type = type; o.frequency.setValueAtTime(freq, t + when);
       if (slide) o.frequency.linearRampToValueAtTime(freq + slide, t + when + dur);
-      g.gain.setValueAtTime(vol, t + when); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur);
+      g.gain.setValueAtTime(vol * sv, t + when); g.gain.exponentialRampToValueAtTime(0.0001, t + when + dur);
       o.connect(g); g.connect(c.destination); o.start(t + when); o.stop(t + when + dur + 0.02);
     };
     switch (kind) {

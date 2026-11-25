@@ -1,6 +1,6 @@
 // 시작 화면, 독도 마을(허브), 게임 선택 화면
 import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
-import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash } from './widgets.js';
+import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash, soundPanel } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이편', '화산섬의 탄생순서', '독도와 울릉도의 거리편', '독도의 지하자원', '독도의 이름편 -1-', '독도의 이름편 -2-', '독도와 지도편', '독도의 역사편 -1-', '독도의 역사편 -2-', '독도와 일본편'];
 export const HERO_TITLES = ['이사부편', '누군가가 버리고간 문서', '안용복편', '홍순칠편', '누군가가 고의로 버린 문서'];
@@ -22,7 +22,7 @@ export class TitleScene {
   enter() { audio.play('daddy_theme'); }
   update(dt) { this.t += dt; }
   draw() {
-    beginUI(this.notice.open ? 1 : 0);
+    beginUI(soundPanel.isOpen ? 2 : this.notice.open ? 1 : 0);
     drawCover(img('bg1'), 0, 0, W, H);
     ctx.fillStyle = 'rgba(20,30,40,.25)'; ctx.fillRect(0, 0, W, H);
     const bob = Math.sin(this.t * 2) * 6;
@@ -41,11 +41,12 @@ export class TitleScene {
     }
     soundButton();
     this.notice.draw(1);
+    soundPanel.draw(2);
   }
 }
 
 export function soundButton(layer = 0) {
-  if (button(audio.muted ? '소리 켜기' : '소리 끄기', W - 170, H - 70, 150, 54, { size: 22, layer })) audio.toggleMute();
+  if (button('소리 설정', W - 170, H - 70, 150, 54, { size: 22, layer })) soundPanel.open();
 }
 
 // ================================================================ 독도 마을
@@ -63,7 +64,7 @@ export class HubScene {
       if (on) this.walkers.push({ i, x: 270 + ((i * 0.618) % 1) * 720, y: 572 + (i % 4) * 28, vx: 0, tNext: Math.random() * 2, clicks: 0, flip: false });
     });
   }
-  get layer() { return this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
+  get layer() { return soundPanel.isOpen ? 5 : this.reveal.open ? 4 : this.notice.open ? 3 : this.reader.open ? 2 : this.panel ? 1 : 0; }
   update(dt) {
     this.t += dt;
     this.reveal.update(dt);
@@ -131,6 +132,7 @@ export class HubScene {
     this.reader.draw(2);
     this.notice.draw(3);
     this.reveal.draw(4);
+    soundPanel.draw(5);
   }
   // 정령을 꾹 누르고(0.35초) 있으면 들어 올려 원하는 곳으로 옮길 수 있음
   updateDrag(dt) {
