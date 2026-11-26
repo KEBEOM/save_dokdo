@@ -55,6 +55,23 @@ export class Reader {
   // item: { name(크게), sub(작은 분류), quote(대사), text(설명), image, frame, caption } — 예전처럼 title만 줘도 됨
   show(item) { this.item = item; this.scroll = 0; }
   get open() { return !!this.item; }
+  layout(it, tw, size, lh) {
+    const qSize = size + 5, qlh = Math.round(qSize * 1.4), hSize = size + 2, ind = 28;
+    const rows = [];
+    if (it.quote) { for (const ln of wrap(it.quote, tw, qSize)) rows.push({ s: ln, size: qSize, h: qlh, color: '#2f6fa8' }); rows.push({ s: '', h: lh * 0.6 }); }
+    for (const raw of String(it.text || '').split('\n')) {
+      const ln = raw.trim();
+      if (!ln) { if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.55 }); continue; }
+      if (ln.startsWith('# ')) {
+        if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.35 });
+        wrap(ln.slice(2), tw, hSize).forEach(w => rows.push({ s: w, size: hSize, h: Math.round(hSize * 1.45), color: '#7a3b12' }));
+      } else if (ln.startsWith('- ')) {
+        wrap(ln.slice(2), tw - ind, size).forEach((w, k) => rows.push({ s: w, size, h: lh, color: '#2b2b2b', indent: ind, bullet: k === 0 }));
+      } else wrap(ln, tw, size).forEach(w => rows.push({ s: w, size, h: lh, color: '#2b2b2b' }));
+    }
+    while (rows.length && rows[rows.length - 1].s === '') rows.pop();
+    return rows;
+  }
   draw(layer) {
     const it = this.item;
     if (!it) return;
@@ -78,22 +95,14 @@ export class Reader {
     }
     // 글 칸: 사진 오른쪽 빈 곳
     const tx = x + (it.image ? 40 + picW + 44 : 50), tw = x + w - 50 - tx, ty = cy0, th = chh;
-    const qSize = 32, size = 27, lh = Math.round(size * 1.55), qlh = Math.round(qSize * 1.4);
-    const hSize = 29, ind = 28;
     // 글 꾸미기: '# 제목' 줄은 소제목, '- ' 줄은 글머리표(둘째 줄부터 들여쓰기), 빈 줄은 문단 사이 띄우기
-    const rows = [];
-    if (it.quote) { for (const ln of wrap(it.quote, tw, qSize)) rows.push({ s: ln, size: qSize, h: qlh, color: '#2f6fa8' }); rows.push({ s: '', h: lh * 0.6 }); }
-    for (const raw of String(it.text || '').split('\n')) {
-      const ln = raw.trim();
-      if (!ln) { if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.55 }); continue; }
-      if (ln.startsWith('# ')) {
-        if (rows.length && rows[rows.length - 1].s !== '') rows.push({ s: '', h: lh * 0.35 });
-        wrap(ln.slice(2), tw, hSize).forEach(w => rows.push({ s: w, size: hSize, h: Math.round(hSize * 1.45), color: '#7a3b12' }));
-      } else if (ln.startsWith('- ')) {
-        wrap(ln.slice(2), tw - ind, size).forEach((w, k) => rows.push({ s: w, size, h: lh, color: '#2b2b2b', indent: ind, bullet: k === 0 }));
-      } else wrap(ln, tw, size).forEach(w => rows.push({ s: w, size, h: lh, color: '#2b2b2b' }));
+    // 한 화면에 조금 넘치면 글자를 살짝 줄여서 넘기지 않고 다 보이게, 그래도 넘치면 원래 크기로 넘겨 읽기
+    let rows, size, lh;
+    for (const s of [27, 25, 23, 27]) {
+      size = s; lh = Math.round(size * 1.55);
+      rows = this.layout(it, tw, size, lh);
+      if (rows.reduce((a, r) => a + r.h, 0) <= th) break;
     }
-    while (rows.length && rows[rows.length - 1].s === '') rows.pop();
     const total = rows.reduce((a, r) => a + r.h, 0);
     const fits = total <= th;
     const maxScroll = fits ? 0 : total - th;
