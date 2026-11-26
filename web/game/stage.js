@@ -17,10 +17,10 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const URCHIN_TIP = '성게를 치웠구나! 성게가 너무 많으면 바위의 해조류를 다 갉아먹어서\n바다가 하얗게 변해(갯녹음). 성게를 모두 치워 바다 숲을 살려 줘!';
-const URCHIN_DONE = '성게를 모두 치웠다! 바다 숲이 다시 살아났어.\n성게를 좋아하는 돌돔도 놀러 왔네! (독도 포인트 +10)';
-// 괭이갈매기 그림 조각 (assets/img/gull.png): 위치·크기와 부리 끝(bx,by)·발끝(feet)
-const GULL = {"idle": [{"x": 0.0, "y": 0.0, "w": 105.6, "h": 88.8, "bx": 94.2, "by": 26.4, "feet": 82.2}, {"x": 108.0, "y": 0.0, "w": 103.2, "h": 91.2, "bx": 91.8, "by": 25.2, "feet": 84.6}, {"x": 213.6, "y": 0.0, "w": 103.8, "h": 90.6, "bx": 92.4, "by": 25.2, "feet": 84.0}, {"x": 319.8, "y": 0.0, "w": 105.0, "h": 89.4, "bx": 93.6, "by": 27.0, "feet": 82.8}], "peck": [{"x": 427.2, "y": 0.0, "w": 127.8, "h": 69.6, "bx": 111.6, "by": 50.4, "feet": 63.0}], "call": [{"x": 557.4, "y": 0.0, "w": 125.4, "h": 112.8, "bx": 109.8, "by": 45.0, "feet": 106.2}], "takeoff": [{"x": 685.2, "y": 0.0, "w": 120.0, "h": 88.2, "bx": 108.6, "by": 26.4, "feet": 81.6}, {"x": 807.6, "y": 0.0, "w": 118.8, "h": 101.4, "bx": 107.4, "by": 49.8, "feet": 94.8}], "fly": [{"x": 928.8, "y": 0.0, "w": 127.8, "h": 94.2, "bx": 116.4, "by": 54.6, "feet": 87.6}, {"x": 1059.0, "y": 0.0, "w": 125.4, "h": 84.6, "bx": 114.0, "by": 42.6, "feet": 78.0}, {"x": 1186.8, "y": 0.0, "w": 133.2, "h": 69.6, "bx": 121.2, "by": 31.8, "feet": 63.0}, {"x": 1322.4, "y": 0.0, "w": 129.6, "h": 73.2, "bx": 117.6, "by": 30.0, "feet": 66.6}]};
-const GULL_K = 1.05;   // 그림 1px → 화면 1.05px
+const URCHIN_DONE = '성게를 모두 치웠다! 바다 숲이 다시 살아났어.\n해조류 사이로 돌돔이 헤엄치는 게 보이니? (독도 포인트 +10)';
+// 괭이갈매기 도트 그림 조각 (assets/img/gull.png): 위치·크기와 부리 끝(bx,by)·발끝(feet), 단위는 도트 한 칸
+const GULL = {"idle": [{"x": 0, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 5, "feet": 17}, {"x": 22, "y": 0, "w": 20, "h": 18, "bx": 18, "by": 4, "feet": 17}, {"x": 43, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 4, "feet": 17}], "peck": [{"x": 87, "y": 0, "w": 26, "h": 13, "bx": 19, "by": 8, "feet": 12}], "call": [{"x": 114, "y": 0, "w": 26, "h": 23, "bx": 23, "by": 8, "feet": 22}], "takeoff": [{"x": 141, "y": 0, "w": 25, "h": 17, "bx": 22, "by": 4, "feet": 16}, {"x": 167, "y": 0, "w": 24, "h": 20, "bx": 22, "by": 9, "feet": 19}], "fly": [{"x": 192, "y": 0, "w": 26, "h": 19, "bx": 24, "by": 11, "feet": 18}, {"x": 219, "y": 0, "w": 26, "h": 16, "bx": 24, "by": 8, "feet": 15}, {"x": 246, "y": 0, "w": 28, "h": 13, "bx": 25, "by": 5, "feet": 12}, {"x": 275, "y": 0, "w": 27, "h": 14, "bx": 25, "by": 5, "feet": 13}]};
+const GULL_K = 4;      // 도트 한 칸 → 화면 4px (다른 캐릭터와 같은 도트 크기)
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
 const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '바위에 붙은 보라색 성게를 치워라! 다 치우면 바다 숲이 살아나고 돌돔이 놀러 온다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
@@ -95,7 +95,6 @@ export class StageScene {
     // 괭이갈매기 (a쪽·b쪽 사이를 오가며 태워 줌)와 성게
     this.gulls = (d.gulls || []).map(g => ({ ...g, side: 'a', x: g.a[0], y: g.a[1], state: 'wait', t: 0, ready: true, fl: Math.random() * 6, dir: 1 }));
     this.urchins = (d.urchins || []).map(u => ({ ...u, got: false, grow: 0, pop: 0 }));
-    this.fishShow = 0;
     // 별 3개: 목표 시간 안에 / 독도 포인트 모두 / 로봇에게 한 번도 안 잡히기
     this.playTime = 0; this.robotHits = 0;
     this.par = Math.max(60, Math.round((30 + 1.0 * (this.bounds.r - this.bounds.l)) / 10) * 10);
@@ -350,11 +349,10 @@ export class StageScene {
       if (u.got) { if (u.grow < 1) u.grow = Math.min(1, u.grow + dt * 1.2); continue; }
       if (Math.abs(u.x - p.x) < 0.6 && Math.abs(u.y - (p.y - 0.08)) < 0.65) {
         u.got = true; u.pop = 0.4; save.dp += 2; persist(); audio.sfx('urchin');
-        if (this.urchins.every(v => v.got)) { save.dp += 10; persist(); this.fishShow = 0.01; audio.sfx('good'); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_DONE }; }
+        if (this.urchins.every(v => v.got)) { save.dp += 10; persist(); audio.sfx('good'); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_DONE }; }
         else if (!save.tips.urchin) { save.tips.urchin = true; persist(); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_TIP }; }
       }
     }
-    if (this.fishShow > 0) { this.fishShow += dt; if (this.fishShow > 8) this.fishShow = 0; }
     // 열쇠
     for (const k of this.keys) {
       if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.start = [k.x, k.y - 0.25]; audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
@@ -486,7 +484,7 @@ export class StageScene {
         g.x = home[0]; g.y = home[1];
         g.dir = Math.sign(other[0] - home[0]) || 1;
         // 몸통 자리(부리보다 조금 뒤)와 주인공 사이
-        const dx = p.x - (g.x - 0.7 * g.dir), dy = p.y - (g.y - 0.54);
+        const dx = p.x - (g.x - 0.56 * g.dir), dy = p.y - (g.y - 0.43);
         const dist = Math.hypot(dx, dy);
         // 내려 준 뒤 잠깐(0.6초)은 다시 태우지 않음
         if (!g.ready) { g.cool = (g.cool ?? 0.6) - dt; if (g.cool <= 0) { g.ready = true; g.cool = undefined; } }
@@ -529,7 +527,7 @@ export class StageScene {
   rideGull(dt) {
     const p = this.p, g = p.riding;
     // 날아오르는 처음 0.35초 동안 발에 매달린 자리로 부드럽게 옮겨 감
-    const k = Math.min(1, g.t / 0.35), tx = -0.6 * g.dir, ty = -1.1;
+    const k = Math.min(1, g.t / 0.35), tx = -0.5 * g.dir, ty = -1.0;
     const ox = g.off0 ? g.off0[0] + (tx - g.off0[0]) * k : tx, oy = g.off0 ? g.off0[1] + (ty - g.off0[1]) * k : ty;
     p.x = g.x + ox; p.y = g.y + oy; p.vx = p.vy = 0; p.ground = false; p.face = g.dir; p.anim += dt;
     if (p.blink > 0) p.blink -= dt;
@@ -694,7 +692,6 @@ export class StageScene {
       text('맵을 불러오는 중...', W / 2, H / 2 + 20, { size: 32, align: 'center', color: '#f4e3c3' });
       return;
     }
-    if (this.fishShow > 0) this.drawFish();
     this.drawHUD(layer);
     this.drawMinimap();
     if (this.modal) this.drawModal();
@@ -757,13 +754,11 @@ export class StageScene {
     const ox = -((this.cam.x * U * 0.12) % bw + bw) % bw;
     for (let k = -1; k < 2; k++) ctx.drawImage(bg, Math.round(ox + k * bw), y, bw, bh);
   }
-  // 성게 하나 (제작자가 그린 성게 그림, 살짝 꿈틀거림)
+  // 성게 하나 (제작자가 그린 성게 도트 그림): 도트가 흐려지지 않게 정수 배로
   drawUrchinAt(cx, cy, r, t = 0) {
-    const im = img('urchin'), sz = r * 3.6;
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.sin(t * 2 + cx * 0.01) * 0.06);
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(im, -sz / 2, -sz / 2 * 0.94, sz, sz * 0.94);
-    ctx.restore();
+    const im = img('urchin'), iw = im.width || 22, ih = im.height || 21;
+    const k = Math.max(1, Math.round(r * 3.6 / iw)), bob = Math.round(Math.sin(t * 2 + cx * 0.01) * 1);
+    ctx.drawImage(im, Math.round(cx - iw * k / 2), Math.round(cy - ih * k / 2) + bob * k, iw * k, ih * k);
   }
   // 성게가 있는 발판은 하얗게(갯녹음), 치우면 초록 해조류가 자라남
   drawUrchins() {
@@ -777,7 +772,7 @@ export class StageScene {
           ctx.beginPath(); ctx.ellipse(bx, sy + 3, w, U * 0.09, 0, 0, Math.PI * 2); ctx.fill();
         }
         ctx.restore();
-        const [ux, uy] = this.w2s(u.x, u.y + Math.sin(this.t * 2 + u.x) * 0.02);
+        const [ux, uy] = this.w2s(u.x, u.y + 0.18);
         this.drawUrchinAt(ux, uy, U * 0.26, this.t);
         // 처음에는 성게가 무서운 것처럼 보일 수 있으니, 가까이 가면 '닿아서 치우기!' 안내
         if (!save.tips.urchin && Math.hypot(this.p.x - u.x, this.p.y - u.y) < 4) text('닿아서 치우기!', ux, uy - 52 + Math.sin(this.t * 5) * 3, { size: 20, align: 'center', color: '#fff', stroke: '#5b2a7a', strokeW: 5 });
@@ -791,6 +786,17 @@ export class StageScene {
           ctx.stroke();
         }
         ctx.restore();
+        // 해조류 사이로 아주 작은 돌돔이 왔다 갔다 헤엄침
+        if (u.grow > 0.5) {
+          const ph = this.t * 0.7 + u.x, span = Math.max(0.2, pl.w - 0.8);
+          const fx = pl.x0 + 0.4 + span * (0.5 + 0.5 * Math.sin(ph)), fy = pl.top + 0.22 + Math.sin(this.t * 3 + u.x) * 0.04;
+          const fim = img('rockbream'), fw = (fim.width || 17) * 2, fh = (fim.height || 12) * 2;   // 도트 한 칸 → 2px (아주 작게)
+          const [px, py] = this.w2s(fx, fy);
+          ctx.save(); ctx.globalAlpha = Math.min(1, (u.grow - 0.5) * 4); ctx.translate(Math.round(px), Math.round(py));
+          if (Math.cos(ph) > 0) ctx.scale(-1, 1);   // 오른쪽으로 갈 때는 뒤집어서 가는 쪽을 바라봄 (그림은 왼쪽을 봄)
+          ctx.drawImage(fim, -fw / 2, -fh / 2, fw, fh);
+          ctx.restore();
+        }
         if (u.pop > 0) {
           const [ux, uy] = this.w2s(u.x, u.y), k = 1 - u.pop / 0.4;
           ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#8fd3ff'; ctx.lineWidth = 3;
@@ -818,34 +824,14 @@ export class StageScene {
       const [gx, gy] = this.w2s(g.x, g.y);
       if (gx < -200 || gx > W + 200) continue;
       const f = this.gullFrame(g), k = GULL_K;
-      ctx.save(); ctx.translate(gx, gy); if (g.dir < 0) ctx.scale(-1, 1);
-      ctx.imageSmoothingEnabled = true;   // 큰 그림을 줄여 그릴 때 깔끔하게
-      ctx.drawImage(im, f.x, f.y, f.w, f.h, -f.bx * k, -f.by * k, f.w * k, f.h * k);
+      // 도트가 흐려지지 않게 화면 픽셀에 딱 맞춰 정수 배로 그림
+      ctx.save(); ctx.translate(Math.round(gx), Math.round(gy)); if (g.dir < 0) ctx.scale(-1, 1);
+      ctx.drawImage(im, f.x, f.y, f.w, f.h, -(f.bx + 1) * k, -f.by * k, f.w * k, f.h * k);
       ctx.restore();
       if (g.state === 'wait' && g.near) {
-        text('매달리기!', gx - 0.7 * g.dir * U, gy - 74 + Math.sin(this.t * 5) * 3, { size: 22, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 5 });
+        text('매달리기!', gx - 0.56 * g.dir * U, gy - 50 + Math.sin(this.t * 5) * 3, { size: 22, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 5 });
       }
     }
-  }
-  // 성게를 다 치우면 화면 아래 작은 '바닷속 창'에 돌돔이 헤엄쳐 지나감
-  drawFish() {
-    const f = this.fishShow, a = Math.min(1, f / 0.4, (8 - f) / 0.5);
-    const bw = 560, bh = 160, bx = (W - bw) / 2, by = H - bh - 70;
-    ctx.save(); ctx.globalAlpha = Math.max(0, a);
-    panel(bx - 6, by - 6, bw + 12, bh + 12, { r: 18, inner: false, fill: '#3a2f28' });
-    const gr = ctx.createLinearGradient(0, by, 0, by + bh); gr.addColorStop(0, '#5fb6e0'); gr.addColorStop(1, '#1f5f8f');
-    ctx.fillStyle = gr; rrect(bx, by, bw, bh, 14); ctx.fill();
-    ctx.save(); rrect(bx, by, bw, bh, 14); ctx.clip();
-    // 바닥 해조류
-    ctx.lineCap = 'round';
-    for (let k = 0; k < 14; k++) { const x0 = bx + 20 + k * 40; ctx.strokeStyle = k % 2 ? '#2f8f4e' : '#46b05f'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x0, by + bh); for (let j = 1; j <= 4; j++) ctx.lineTo(x0 + Math.sin(this.t * 2 + k + j) * 6, by + bh - j * 14); ctx.stroke(); }
-    const fx = bx - 140 + (bw + 280) * Math.min(1, f / 7.5), fy = by + 10 + Math.sin(f * 3) * 8;
-    ctx.imageSmoothingEnabled = true; drawFit(img('rockbream'), fx - 80, fy + 18, 160, 114); ctx.imageSmoothingEnabled = false;
-    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
-    for (let j = 0; j < 4; j++) { const bt = (f * 1.3 + j * 0.25) % 1; ctx.beginPath(); ctx.arc(fx + 60 + bt * 10, fy + 60 - bt * 60, 3 + j, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.restore();
-    text('돌돔이 놀러 왔어요!', W / 2, by - 44, { size: 28, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
-    ctx.restore();
   }
   drawMinimap() {
     const x = W - 270, y = 78, w = 250, h = 130;
@@ -1013,7 +999,7 @@ export class StageScene {
         else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
         else if (n === 'urchin') this.drawUrchinAt(168, y + 21, 10, this.t);
-        else if (n === 'gull') { const f = GULL.idle[0]; ctx.imageSmoothingEnabled = true; drawFit(img('gull'), 148, y + 1, 40, 37, { frame: [f.x, f.y, f.w, f.h] }); ctx.imageSmoothingEnabled = false; }
+        else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
         else if (n) drawFit(img(n), 148, y + 1, 40, 37, { frame: fr });
         textBox(g, 214, y + 1, W - 360, 37, { size: 19, align: 'left' });
       });
