@@ -95,6 +95,7 @@ export function defaultSave() {
     spiritMem: Array(10).fill(false), heroMem: Array(5).fill(false),
     easter: 0, finalCleared: false, lastCardScore: 0,
     stars: Array(10).fill(0),            // 스테이지마다 받은 별 (가장 많이 받은 개수)
+    bestTime: Array(10).fill(0),         // 스테이지마다 가장 빨리 깬 시간(초), 0이면 아직 없음
     tips: {},                            // 한 번만 보여 주는 안내
   };
 }

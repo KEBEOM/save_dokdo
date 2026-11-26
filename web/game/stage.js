@@ -588,6 +588,12 @@ export class StageScene {
     if (!Array.isArray(save.stars)) save.stars = Array(10).fill(0);
     this.starBest = save.stars[n - 1] || 0;
     save.stars[n - 1] = Math.max(this.starBest, cnt);
+    // 가장 빨리 깬 시간
+    if (!Array.isArray(save.bestTime)) save.bestTime = Array(10).fill(0);
+    const prev = save.bestTime[n - 1] || 0;
+    this.newRecord = !prev || this.playTime < prev;
+    this.prevBest = prev;
+    if (this.newRecord) save.bestTime[n - 1] = this.playTime;
   }
   openRobotQuiz(rb) {
     // 밀어내지 않고 그 자리에 세워 둠 (발판 끝에서 밀려 떨어지지 않게). 맞힌 로봇은 다시 문제를 내지 않음
@@ -902,6 +908,10 @@ export class StageScene {
       const over = this.playTime > this.par;
       panel(536, 12, 236, 52, { r: 8, inner: false, fill: over ? '#e8d6cc' : '#f4e3c3' });
       text(`시간 ${fmtTime(this.playTime)} / 목표 ${fmtTime(this.par)}`, 654, 24, { size: 22, align: 'center', color: over ? '#9a3a2a' : '#2b2b2b' });
+      // 그 아래: 이 스테이지 최고 기록 (가장 빨리 깬 시간)
+      const best = (save.bestTime || [])[this.n - 1] || 0;
+      panel(566, 68, 176, 40, { r: 8, inner: false, fill: '#efe4cf', lw: 3 });
+      text(best ? `최고 기록 ${fmtTime(best)}` : '최고 기록 없음', 654, 76, { size: 19, align: 'center', color: best ? '#7a3b12' : '#8a7a66' });
     }
     if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
@@ -1019,9 +1029,10 @@ export class StageScene {
         text(labels[k][1], cx, 322, { size: 20, align: 'center', color: got[k] ? '#3d7a2a' : '#9a6a3a' });
       }
       const cnt = got.filter(Boolean).length;
-      if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 360, { size: 24, align: 'center', color: '#7a3b12' });
-      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 400, 660, 60, { size: 26 });
-      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 462, 660, 40, { size: 22, color: '#5a4a3a' });
+      if (el > 1.5 && this.newRecord) text(this.prevBest ? `새 최고 기록! (전: ${fmtTime(this.prevBest)})` : '첫 기록!', W / 2 - 230, 348, { size: 18, align: 'center', color: '#c0392b' });
+      if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 378, { size: 24, align: 'center', color: '#7a3b12' });
+      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 412, 660, 54, { size: 26 });
+      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 470, 660, 40, { size: 22, color: '#5a4a3a' });
       if (this.n < 10 && button('다음 스테이지', W / 2 - 300, 540, 280, 76, { layer: L, size: 30 })) go(nav.stage(this.n + 1));
       if (button('스테이지 메뉴', W / 2 + 20, 540, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
     } else if (m.type === 'notpass') {
