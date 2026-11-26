@@ -152,7 +152,7 @@ function makeLevel(orig, n) {
   };
 
   // 어떤 구역을 몇 개나: 스테이지가 오를수록 많고 다양하게
-  const segCount = 4 + n;
+  const segCount = Math.round((4 + n) * 1.5);   // 맵 길이 1.5배
   const pool = ['run', 'run', 'climb', 'drop'];
   if (n >= 2) pool.push('lift', 'climb');
   if (n >= 3) pool.push('ferry', 'drop');
@@ -248,12 +248,12 @@ function makeLevel(orig, n) {
   for (let k = 0; k < greenCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { green: true, speed: 0.9 + 0.08 * n });
   // 3) 남은 자리: 빨간 로봇과 가만히 서서 뛰어오르는 파란 로봇(장애물)이 나눠 씀
   const leftover = path.filter(p => p.w >= 2 && p.kind !== "ledge" && p.kind !== "climb" && p.kind !== "pillar" && free(p)).sort(() => Math.random() - 0.5);
-  const blockers = Math.min(Math.round(2 * n / 3), Math.floor(leftover.length * 0.35));
+  const blockers = Math.min(Math.round(n), Math.floor(leftover.length * 0.35));   // 맵이 1.5배 길어진 만큼 로봇도 1.5배 (빽빽한 정도는 그대로)
   for (let k = 0; k < blockers; k++) {
     const p = leftover[k]; used.add(p);
     robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true, plat: p });
   }
-  const redTarget = 2 + Math.round(2.2 * n);
+  const redTarget = Math.round((2 + 2.2 * n) * 1.5);
   for (const p of walkSpots.slice(wi)) { if (robots.filter(r => r.walk && !r.green && !r.brown).length >= redTarget) break; if (free(p)) addWalker(p, {}); }
 
 
