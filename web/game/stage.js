@@ -16,14 +16,12 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 // 9스테이지에서 로보킹을 처음 만났을 때 (원작 대사)
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
-const URCHIN_TIP = '성게를 치웠구나! 성게가 너무 많으면 바위의 해조류를 다 갉아먹어서\n바다가 하얗게 변해(갯녹음). 성게를 모두 치워 바다 숲을 살려 줘!';
-const URCHIN_DONE = '성게를 모두 치웠다! 바다 숲이 다시 살아났어.\n해조류 사이로 돌돔이 헤엄치는 게 보이니? (독도 포인트 +10)';
 // 괭이갈매기 도트 그림 조각 (assets/img/gull.png): 위치·크기와 부리 끝(bx,by)·발끝(feet), 단위는 도트 한 칸
 const GULL = {"idle": [{"x": 0, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 5, "feet": 17}, {"x": 22, "y": 0, "w": 20, "h": 18, "bx": 18, "by": 4, "feet": 17}, {"x": 43, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 4, "feet": 17}], "peck": [{"x": 87, "y": 0, "w": 26, "h": 13, "bx": 19, "by": 8, "feet": 12}], "call": [{"x": 114, "y": 0, "w": 26, "h": 23, "bx": 23, "by": 8, "feet": 22}], "takeoff": [{"x": 141, "y": 0, "w": 25, "h": 17, "bx": 22, "by": 4, "feet": 16}, {"x": 167, "y": 0, "w": 24, "h": 20, "bx": 22, "by": 9, "feet": 19}], "fly": [{"x": 192, "y": 0, "w": 26, "h": 19, "bx": 24, "by": 11, "feet": 18}, {"x": 219, "y": 0, "w": 26, "h": 16, "bx": 24, "by": 8, "feet": 15}, {"x": 246, "y": 0, "w": 28, "h": 13, "bx": 25, "by": 5, "feet": 12}, {"x": 275, "y": 0, "w": 27, "h": 14, "bx": 25, "by": 5, "feet": 13}]};
 const GULL_K = 4;      // 도트 한 칸 → 화면 4px (다른 캐릭터와 같은 도트 크기)
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '바위에 붙은 보라색 성게를 치워라! 다 치우면 바다 숲이 살아나고 돌돔이 놀러 온다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -92,9 +90,8 @@ export class StageScene {
     this.start = [d.start[0], d.start[1] + 0.2];
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
-    // 괭이갈매기 (a쪽·b쪽 사이를 오가며 태워 줌)와 성게
+    // 괭이갈매기 (a쪽·b쪽 사이를 오가며 태워 줌)
     this.gulls = (d.gulls || []).map(g => ({ ...g, side: 'a', x: g.a[0], y: g.a[1], state: 'wait', t: 0, ready: true, fl: Math.random() * 6, dir: 1 }));
-    this.urchins = (d.urchins || []).map(u => ({ ...u, got: false, grow: 0, pop: 0 }));
     // 별 3개: 목표 시간 안에 / 독도 포인트 모두 / 로봇에게 한 번도 안 잡히기
     this.playTime = 0; this.robotHits = 0;
     this.par = Math.max(60, Math.round((30 + 1.0 * (this.bounds.r - this.bounds.l)) / 10) * 10);
@@ -139,7 +136,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'rockbream', 'urchin', this.bgName])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -342,16 +339,6 @@ export class StageScene {
     // 독도 포인트
     for (const c of this.coins) {
       if (!c.got && Math.abs(c.x - p.x) < 0.55 && Math.abs(c.y - (p.y - 0.08)) < 0.6) { c.got = true; save.dp += 3; persist(); audio.sfx('coin'); }
-    }
-    // 성게: 닿으면 치움. 처음 한 번은 왜 치우는지 알려 주고, 다 치우면 돌돔이 놀러 옴
-    for (const u of this.urchins) {
-      if (u.pop > 0) u.pop -= dt;
-      if (u.got) { if (u.grow < 1) u.grow = Math.min(1, u.grow + dt * 1.2); continue; }
-      if (Math.abs(u.x - p.x) < 0.6 && Math.abs(u.y - (p.y - 0.08)) < 0.65) {
-        u.got = true; u.pop = 0.4; save.dp += 2; persist(); audio.sfx('urchin');
-        if (this.urchins.every(v => v.got)) { save.dp += 10; persist(); audio.sfx('good'); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_DONE }; }
-        else if (!save.tips.urchin) { save.tips.urchin = true; persist(); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_TIP }; }
-      }
     }
     // 열쇠
     for (const k of this.keys) {
@@ -600,7 +587,6 @@ export class StageScene {
     const dd = this.diff;
     this.drawBackdrop();
     for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
-    this.drawUrchins();
     // 움직이는 발판: 지나가는 길을 점선으로 보여 주고 발판은 노란 테두리로
     for (const m of this.movers) {
       const [ax, ay] = this.w2s(m.x0 + m.w / 2, m.top - 0.5), [bx, by] = this.w2s(m.x0 + m.ax + m.w / 2, m.top - 0.5 + m.ay);
@@ -754,58 +740,6 @@ export class StageScene {
     const ox = -((this.cam.x * U * 0.12) % bw + bw) % bw;
     for (let k = -1; k < 2; k++) ctx.drawImage(bg, Math.round(ox + k * bw), y, bw, bh);
   }
-  // 성게 하나 (제작자가 그린 성게 도트 그림): 도트가 흐려지지 않게 정수 배로
-  drawUrchinAt(cx, cy, r, t = 0) {
-    const im = img('urchin'), iw = im.width || 22, ih = im.height || 21;
-    const k = Math.max(1, Math.round(r * 3.6 / iw)), bob = Math.round(Math.sin(t * 2 + cx * 0.01) * 1);
-    ctx.drawImage(im, Math.round(cx - iw * k / 2), Math.round(cy - ih * k / 2) + bob * k, iw * k, ih * k);
-  }
-  // 성게가 있는 발판은 하얗게(갯녹음), 치우면 초록 해조류가 자라남
-  drawUrchins() {
-    for (const u of this.urchins) {
-      const pl = u.plat, [sx, sy] = this.w2s(pl.x0, pl.top);
-      if (sx > W + 50 || sx + pl.w * U < -50 || sy < -80 || sy > H + 80) continue;
-      if (!u.got) {
-        ctx.save(); ctx.fillStyle = 'rgba(245,245,240,.85)';
-        for (let k = 0; k < pl.w * 3; k++) {
-          const bx = sx + (k + 0.5) * U / 3, w = U * (0.16 + ((k * 37) % 7) * 0.02);
-          ctx.beginPath(); ctx.ellipse(bx, sy + 3, w, U * 0.09, 0, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
-        const [ux, uy] = this.w2s(u.x, u.y + 0.18);
-        this.drawUrchinAt(ux, uy, U * 0.26, this.t);
-        // 처음에는 성게가 무서운 것처럼 보일 수 있으니, 가까이 가면 '닿아서 치우기!' 안내
-        if (!save.tips.urchin && Math.hypot(this.p.x - u.x, this.p.y - u.y) < 4) text('닿아서 치우기!', ux, uy - 52 + Math.sin(this.t * 5) * 3, { size: 20, align: 'center', color: '#fff', stroke: '#5b2a7a', strokeW: 5 });
-      } else {
-        ctx.save(); ctx.lineCap = 'round';
-        for (let k = 0; k < pl.w * 2; k++) {
-          const bx = sx + (k + 0.5) * U / 2, h = U * (0.35 + ((k * 13) % 5) * 0.06) * u.grow;
-          ctx.strokeStyle = k % 2 ? '#2f8f4e' : '#46b05f'; ctx.lineWidth = Math.max(2, U * 0.07);
-          ctx.beginPath(); ctx.moveTo(bx, sy);
-          for (let j = 1; j <= 4; j++) ctx.lineTo(bx + Math.sin(this.t * 2.5 + k + j) * U * 0.06 * j / 4, sy - h * j / 4);
-          ctx.stroke();
-        }
-        ctx.restore();
-        // 해조류 사이로 아주 작은 돌돔이 왔다 갔다 헤엄침
-        if (u.grow > 0.5) {
-          const ph = this.t * 0.7 + u.x, span = Math.max(0.2, pl.w - 0.8);
-          const fx = pl.x0 + 0.4 + span * (0.5 + 0.5 * Math.sin(ph)), fy = pl.top + 0.22 + Math.sin(this.t * 3 + u.x) * 0.04;
-          const fim = img('rockbream'), fw = (fim.width || 17) * 2, fh = (fim.height || 12) * 2;   // 도트 한 칸 → 2px (아주 작게)
-          const [px, py] = this.w2s(fx, fy);
-          ctx.save(); ctx.globalAlpha = Math.min(1, (u.grow - 0.5) * 4); ctx.translate(Math.round(px), Math.round(py));
-          if (Math.cos(ph) > 0) ctx.scale(-1, 1);   // 오른쪽으로 갈 때는 뒤집어서 가는 쪽을 바라봄 (그림은 왼쪽을 봄)
-          ctx.drawImage(fim, -fw / 2, -fh / 2, fw, fh);
-          ctx.restore();
-        }
-        if (u.pop > 0) {
-          const [ux, uy] = this.w2s(u.x, u.y), k = 1 - u.pop / 0.4;
-          ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#8fd3ff'; ctx.lineWidth = 3;
-          for (let j = 0; j < 5; j++) { const a = j * 1.26; ctx.beginPath(); ctx.arc(ux + Math.cos(a) * k * U * 0.6, uy - k * U * 0.5 + Math.sin(a) * k * U * 0.3, U * 0.08, 0, Math.PI * 2); ctx.stroke(); }
-          ctx.restore();
-        }
-      }
-    }
-  }
   // 괭이갈매기: 발판 끝에 서서 기다리다가(가끔 콕콕 쪼고, 다가오면 끼룩!) 주인공을 발에 매달고 날아감
   gullFrame(g) {
     if (g.state === 'fly') {
@@ -867,7 +801,6 @@ export class StageScene {
       else if (rb.brown) mark(rb.x, rb.y, 2.6, '#9a6a3a', 'diamond');
       else mark(rb.x, rb.y, 2, '#c0392b', 'square');
     }
-    for (const u of this.urchins) if (!u.got) dot(u.x, u.y, 2.2, '#5b2a7a');
     for (const g of this.gulls) { dot(g.x, g.y, 3.2, '#555'); dot(g.x, g.y, 2.2, '#fff'); }
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
@@ -904,13 +837,6 @@ export class StageScene {
       ctx.strokeStyle = '#3aa0e0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx + 29, hy + 29, 18, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
       if (this.p.shields.length > 1) text('×' + this.p.shields.length, hx + 29, hy + 15, { size: 24, align: 'center', color: '#1f5f8f', stroke: '#fff', strokeW: 4 });
-    }
-    // 성게 남은 수
-    if (this.urchins.length) {
-      const ux = 14 + 5 * 66, done = this.urchins.filter(u => u.got).length, all = done === this.urchins.length;
-      panel(ux, 74, 118, 58, { r: 8, inner: false, fill: all ? '#d6f0c8' : '#efe4cf', lw: 3 });
-      this.drawUrchinAt(ux + 29, 106, 11, this.t);
-      text(`${done}/${this.urchins.length}`, ux + 84, 88, { size: 26, align: 'center', color: all ? '#2f7a3a' : '#5b2a7a' });
     }
     // 걸린 시간 / 목표 시간 (별 하나)
     {
@@ -990,7 +916,7 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['urchin'], ['gull'], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
         const y = 108 + k * 41;
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 39);
@@ -998,7 +924,6 @@ export class StageScene {
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 5, 40, 30); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 5, 40, 30); }
         else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
-        else if (n === 'urchin') this.drawUrchinAt(168, y + 21, 10, this.t);
         else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
         else if (n) drawFit(img(n), 148, y + 1, 40, 37, { frame: fr });
         textBox(g, 214, y + 1, W - 360, 37, { size: 19, align: 'left' });

@@ -95,7 +95,7 @@ export function defaultSave() {
     spiritMem: Array(10).fill(false), heroMem: Array(5).fill(false),
     easter: 0, finalCleared: false, lastCardScore: 0,
     stars: Array(10).fill(0),            // 스테이지마다 받은 별 (가장 많이 받은 개수)
-    tips: {},                            // 한 번만 보여 주는 안내 (성게 등)
+    tips: {},                            // 한 번만 보여 주는 안내
   };
 }
 export let save = loadSave();
@@ -427,7 +427,6 @@ export const audio = {
       case 'clank': noise(0.03, 0.1, 0, 3000, 4); tone(1700, 0.05, 'triangle', 0.02); break;   // 철컥 (작은 로봇 발소리)
       case 'boing': tone(260, 0.2, 'triangle', 0.06, 0, 380); break;                                              // 파란 로봇이 뜀
       case 'gull': tone(1500, 0.12, 'triangle', 0.05, 0, -650); tone(1750, 0.15, 'triangle', 0.05, 0.17, -800); noise(0.05, 0.02, 0, 4000, 2); break;   // 끼룩끼룩 (괭이갈매기)
-      case 'urchin': tone(420, 0.08, 'sine', 0.07, 0, 520); tone(760, 0.07, 'sine', 0.05, 0.07, 640); noise(0.09, 0.05, 0, 3200, 2); break;   // 뽀글 (성게 치우기)
       case 'star': tone(1318, 0.14, 'triangle', 0.07); tone(1760, 0.22, 'triangle', 0.06, 0.08); break;
       case 'buy': [659, 880, 1318].forEach((f, i) => tone(f, 0.1, 'square', 0.05, i * 0.06)); break;
     }

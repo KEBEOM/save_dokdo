@@ -255,14 +255,6 @@ function makeLevel(orig, n) {
   }
   const redTarget = 2 + Math.round(2.2 * n);
   for (const p of walkSpots.slice(wi)) { if (robots.filter(r => r.walk && !r.green && !r.brown).length >= redTarget) break; if (free(p)) addWalker(p, {}); }
-  // 성게: 로봇·열쇠·정령이 없는 발판에 하나씩 (바위를 하얗게 만드는 갯녹음의 원인)
-  const urchins = [];
-  const uSpots = path.filter(p => p.w >= 2 && free(p) && p.kind !== 'pillar').sort(() => Math.random() - 0.5);
-  const uCount = Math.min(uSpots.length, 3 + Math.floor(n / 2));
-  for (let k = 0; k < uCount; k++) {
-    const p = uSpots[k]; used.add(p);
-    urchins.push({ x: p.x0 + 0.5 + irand(0, p.w - 1), y: p.top + 0.28, plat: { x0: p.x0, w: p.w, top: p.top } });
-  }
 
 
   const doorX = end.x0 + 3, flagX = end.x0 + end.w - 2;
@@ -289,7 +281,6 @@ function makeLevel(orig, n) {
   if (spiritObj) lift(spiritObj, 0.55);
   const doorZone = { x: end.x0, y: end.top, w: end.w, h: 3 };
   const items = keyObjs.map(o => ({ x: o.x - 0.5, y: o.y - 0.5, w: 1, h: 1 }));
-  for (const u of urchins) items.push({ x: u.x - 0.45, y: u.y - 0.4, w: 0.9, h: 0.9 });
   for (const g of gulls) for (const [gx, gy, dr] of [[...g.a, 1], [...g.b, -1]]) items.push({ x: gx - 0.56 * dr - 0.9, y: gy - 0.85, w: 1.8, h: 1.8 });
   if (spiritObj) items.push({ x: spiritObj.x - 0.7, y: spiritObj.y - 0.7, w: 1.4, h: 1.4 });
   // 독도 포인트: 지형·로봇·열쇠·정령·문·다른 포인트와 겹치면 빼기
@@ -306,7 +297,7 @@ function makeLevel(orig, n) {
   const start = [0, 1.2];
   const deco = [{ s: 'StartGuide__StartGuide_' + (n - 1), x: -1.8, y: 0.55, sx: 1.376, sy: 1.376 }];
   return {
-    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco, gulls, urchins,
+    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco, gulls,
     topLeft: [-4, Math.max(...ys) + 6], bottomRight: [end.x0 + end.w + 2, Math.min(...ys) - 1],
     generated: true,
     shortfall: Math.max(0, brownCount - robots.filter(r => r.brown).length) + Math.max(0, greenCount - robots.filter(r => r.green).length),
