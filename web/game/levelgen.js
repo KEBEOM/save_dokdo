@@ -138,6 +138,16 @@ function makeLevel(orig, n) {
       }
       last = q; top = q.top;
     },
+    // 징검돌: 하나씩 떠 있는 블록을 연달아 밟고 건너기 (밟으면 잠시 뒤 무너짐)
+    stones() {
+      const k = irand(3, 3 + Math.round(2 * e));
+      for (let i = 0; i < k; i++) {
+        const p = add(endOf(last) + rand(1.4, 2.0 + 0.6 * e), 1, top + rand(-0.8, 1.0), 'stone');
+        coinBetween(last, p); last = p; top = p.top;
+      }
+      const q = add(endOf(last) + rand(1.4, 2.0), irand(3, 4), top + rand(-0.5, 0.5), 'path');
+      coinBetween(last, q); last = q; top = q.top;
+    },
     // 좁은 기둥 건너기
     pillars() {
       const k = irand(3, 3 + Math.round(3 * e));
@@ -159,8 +169,9 @@ function makeLevel(orig, n) {
   if (n >= 4) pool.push('pillars', 'lift');
   if (n >= 6) pool.push('ferry', 'pillars');
   if (n >= 4) pool.push('gull');
+  if (n >= 2) pool.push('stones');
   const plan = ['run', 'climb', 'drop'];
-  if (n >= 2) plan.push('lift', 'gull');   // 2스테이지부터 괭이갈매기 구간이 꼭 하나 이상
+  if (n >= 2) plan.push('lift', 'gull', 'stones');   // 2스테이지부터 괭이갈매기 구간이 꼭 하나 이상
   if (n >= 3) plan.push('ferry');
   while (plan.length < segCount) plan.push(pick(pool));
   // 첫 구역은 달리기, 나머지는 섞되 같은 구역이 연달아 나오지 않게
@@ -211,12 +222,14 @@ function makeLevel(orig, n) {
   const spiritPlat = placeItem(rand(0.55, 0.9), 1);
 
   // 타일·충돌 상자로 바꾸기
+  // 무너지는 블록: 하나만 떠 있는 발판 중 일부 (2스테이지부터, 열쇠·정령·보너스 발판은 빼고)
+  for (const p of plats) if (n >= 2 && p.w === 1 && p.kind !== 'bonus' && !keyPlats.includes(p) && p !== spiritPlat && (p.kind === 'stone' || Math.random() < 0.6)) p.crumble = true;
   const platforms = [];
   for (const p of plats) {
     for (let k = 0; k < p.w; k++) {
       const s = p.w === 1 ? 'Platforms__Single' : k === 0 ? 'Platforms__Single_Left' : k === p.w - 1 ? 'Platforms__Single_Right' : 'Platforms__Single';
       const cx = p.x0 + k + 0.5, cy = p.top - 0.5;
-      platforms.push({ s, x: cx, y: cy, sx: 1, sy: 1, box: [cx - 0.5, cy - 0.5, 1, 1] });
+      platforms.push({ s, x: cx, y: cy, sx: 1, sy: 1, box: [cx - 0.5, cy - 0.5, 1, 1], ...(p.crumble ? { crumble: true } : {}) });
     }
   }
   // 발판 위에 줄지은 독도 포인트
@@ -226,7 +239,7 @@ function makeLevel(orig, n) {
   const robots = [];
   const used = new Set();
   const itemPlats = new Set([...keyPlats, spiritPlat]);
-  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0) && !p.gullBase;   // 갈매기가 앉는 발판에는 로봇 없음
+  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0) && !p.gullBase && !p.crumble;   // 갈매기가 앉는 발판·무너지는 블록에는 로봇 없음
   // 1) 문제를 내는 파란 로봇 (원작 스테이지의 문제 그대로): 맵 전체에 고르게
   const qs = [...new Set(orig.robots.filter(r => r.q).map(r => r.q))];
   const qSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p));

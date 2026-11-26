@@ -21,7 +21,7 @@ const GULL = {"idle": [{"x": 0, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 5, "fe
 const GULL_K = 4;      // 도트 한 칸 → 화면 4px (다른 캐릭터와 같은 도트 크기)
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '금이 간 블록은 밟으면 1초 뒤에 무너진다! 얼른 다음 블록으로 뛰어라! (조금 뒤 다시 생긴다)', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -80,9 +80,14 @@ export class StageScene {
     this.solids = [];
     this.deadly = [];
     this.tiles = [];
+    this.crumbles = [];      // 밟으면 흔들리다 떨어지고, 잠시 뒤 다시 생기는 블록
     for (const p of d.platforms) {
-      this.tiles.push({ p });
-      if (p.box) (p.deadly ? this.deadly : this.solids).push({ x: p.box[0], y: p.box[1], w: p.box[2], h: p.box[3] });
+      const tile = { p };
+      this.tiles.push(tile);
+      if (!p.box) continue;
+      const sb = { x: p.box[0], y: p.box[1], w: p.box[2], h: p.box[3] };
+      if (p.crumble) { Object.assign(sb, { crumble: true, st: 'idle', t: 0, dy: 0, vy: 0, a: 1 }); tile.solid = sb; this.crumbles.push(sb); }
+      (p.deadly ? this.deadly : this.solids).push(sb);
     }
     // 원래 게임의 경계(Top Left / Bottom Right)
     const [lx, ty] = d.topLeft, [rx, by] = d.bottomRight;
@@ -145,7 +150,7 @@ export class StageScene {
   get busy() { return !this.ready || !!this.modal || this.notice.open; }
 
   // ---------------------------------------------------------------- 물리
-  collide(box, list) { for (const s of list) if (box.x < s.x + s.w && box.x + box.w > s.x && box.y < s.y + s.h && box.y + box.h > s.y) return s; return null; }
+  collide(box, list) { for (const s of list) if (!s.off && box.x < s.x + s.w && box.x + box.w > s.x && box.y < s.y + s.h && box.y + box.h > s.y) return s; return null; }
   pbox(p = this.p) { return { x: p.x - PW / 2, y: p.y - 0.38, w: PW, h: PH }; }
   solidList() {
     const list = this.movers.length ? [...this.solids, ...this.movers] : this.solids;
@@ -236,11 +241,12 @@ export class StageScene {
       const feet = p.y - 0.38, x0 = p.x - 1.2, x1 = p.x + 1.2;
       const under = s => s.x < x1 && s.x + s.w > x0 && s.y + s.h <= feet + 0.05;
       const moverUnder = this.movers.some(m => m.x0 - 0.5 < x1 && m.x0 + m.ax + m.w + 0.5 > x0 && m.top - 1 <= feet);
-      voidFall = !this.solids.some(under) && !moverUnder;
+      voidFall = !this.solids.some(s => !s.off && under(s)) && !moverUnder;
     }
     if (p.y < this.bounds.b - 3 || voidFall || this.collide(this.pbox(), this.deadly)) this.respawn();
     }   // (갈매기에 매달려 있지 않을 때만 걷기·점프)
 
+    this.updateCrumbles(dt);
     // 로봇
     for (const rb of this.robots) {
       rb.t += dt;
@@ -454,6 +460,31 @@ export class StageScene {
     this.stones.push({ x: sx, y: sy, vx: dx / T, vy: (dy + 0.5 * g * T * T) / T, t: 0, rot: 0 });
     audio.sfx('throw', this.near(rb.x, rb.y));
   }
+  // ---------------------------------------------------------------- 무너지는 블록
+  // 밟으면 1초 동안 흔들리다(우지직) 아래로 떨어지며 사라지고, 3초 뒤 제자리에 다시 생김
+  updateCrumbles(dt) {
+    const p = this.p, feet = p.y - 0.38;
+    for (const s of this.crumbles) {
+      if (s.st === 'idle') {
+        if (!p.riding && p.vy <= 0.01 && Math.abs(feet - (s.y + s.h)) < 0.08 && p.x + PW / 2 > s.x && p.x - PW / 2 < s.x + s.w) {
+          s.st = 'shake'; s.t = 0; audio.sfx('crack', this.near(s.x + 0.5, s.y + 0.5, 10));
+        }
+      } else if (s.st === 'shake') {
+        s.t += dt;
+        if (s.t >= 1.0) { s.st = 'fall'; s.t = 0; s.off = true; s.vy = 0; audio.sfx('crumble', this.near(s.x + 0.5, s.y + 0.5, 10)); }
+      } else if (s.st === 'fall') {
+        s.t += dt; s.vy += 20 * dt; s.dy -= s.vy * dt; s.a = Math.max(0, 1 - s.t / 0.7);
+        if (s.t >= 0.7) { s.st = 'gone'; s.t = 0; s.a = 0; }
+      } else if (s.st === 'gone') {
+        s.t += dt;
+        // 주인공이 그 자리에 겹쳐 있으면 다시 생기지 않고 기다림
+        if (s.t >= 3 && !this.collide(this.pbox(), [{ x: s.x, y: s.y, w: s.w, h: s.h }])) { s.st = 'back'; s.t = 0; s.dy = 0; s.off = false; }
+      } else if (s.st === 'back') {
+        s.t += dt; s.a = Math.min(1, s.t / 0.4);
+        if (s.t >= 0.4) { s.st = 'idle'; s.a = 1; }
+      }
+    }
+  }
   // ---------------------------------------------------------------- 괭이갈매기
   gullFly(g, rider) {
     const from = g.side, to = from === 'a' ? 'b' : 'a';
@@ -586,7 +617,30 @@ export class StageScene {
     // 배경: 스테이지가 오를수록 아침 → 한낮 → 노을 → 해질녘 → 밤 (비·눈 오는 날은 그 날씨 그림)
     const dd = this.diff;
     this.drawBackdrop();
-    for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
+    for (const t of this.tiles) {
+      if (t.p.deadly) continue;
+      const s = t.solid;
+      if (!s) { this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy); continue; }
+      // 무너지는 블록: 금 간 무늬, 밟으면 흔들림 → 떨어지며 흐려짐 → 다시 생김
+      if (s.st === 'gone') continue;
+      const shake = s.st === 'shake' ? Math.sin(this.t * 55) * 0.05 * (0.5 + s.t) : 0;
+      ctx.save(); ctx.globalAlpha = s.a;
+      this.drawWorldSprite(spriteInfo(t.p.s), t.p.x + shake, t.p.y + s.dy, t.p.sx, t.p.sy);
+      const [cx, cy] = this.w2s(t.p.x + shake - 0.5, t.p.y + s.dy + 0.5);
+      ctx.strokeStyle = 'rgba(40,24,16,.75)'; ctx.lineWidth = 3; ctx.lineCap = 'square';
+      ctx.beginPath();
+      ctx.moveTo(cx + U * 0.22, cy + U * 0.3); ctx.lineTo(cx + U * 0.36, cy + U * 0.52); ctx.lineTo(cx + U * 0.28, cy + U * 0.7); ctx.lineTo(cx + U * 0.42, cy + U * 0.92);
+      ctx.moveTo(cx + U * 0.36, cy + U * 0.52); ctx.lineTo(cx + U * 0.56, cy + U * 0.6);
+      ctx.moveTo(cx + U * 0.7, cy + U * 0.36); ctx.lineTo(cx + U * 0.62, cy + U * 0.56); ctx.lineTo(cx + U * 0.78, cy + U * 0.74);
+      if (s.st === 'shake' && s.t > 0.5) { ctx.moveTo(cx + U * 0.1, cy + U * 0.66); ctx.lineTo(cx + U * 0.3, cy + U * 0.78); ctx.moveTo(cx + U * 0.62, cy + U * 0.86); ctx.lineTo(cx + U * 0.9, cy + U * 0.8); }
+      ctx.stroke();
+      // 흔들릴 때 부스러기
+      if (s.st === 'shake' || s.st === 'fall') {
+        ctx.fillStyle = '#7a4a2a';
+        for (let j = 0; j < 4; j++) { const ft = (this.t * 1.7 + j * 0.27) % 1; ctx.fillRect(Math.round(cx + U * (0.15 + j * 0.22)), Math.round(cy + U + ft * U * 0.8), 4, 4); }
+      }
+      ctx.restore();
+    }
     // 움직이는 발판: 지나가는 길을 점선으로 보여 주고 발판은 노란 테두리로
     for (const m of this.movers) {
       const [ax, ay] = this.w2s(m.x0 + m.w / 2, m.top - 0.5), [bx, by] = this.w2s(m.x0 + m.ax + m.w / 2, m.top - 0.5 + m.ay);
@@ -779,7 +833,7 @@ export class StageScene {
     panel(x - 8, y - 6, w + 16, h + 12, { r: 8, fill: 'rgba(250,240,220,.85)', inner: false, lw: 3 });
     ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
     ctx.fillStyle = '#7a5a3a';
-    for (const s of this.solids) ctx.fillRect(mx(s.x), my(s.y + s.h), Math.max(1.5, s.w * sc), Math.max(1.5, 0.6 * sc));
+    for (const s of this.solids) if (!s.off) { ctx.fillStyle = s.crumble ? '#b08a6a' : '#7a5a3a'; ctx.fillRect(mx(s.x), my(s.y + s.h), Math.max(1.5, s.w * sc), Math.max(1.5, 0.6 * sc)); }
     ctx.fillStyle = '#e0a800';
     for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
@@ -833,6 +887,7 @@ export class StageScene {
     }
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
+    if (save.rescued[this.n - 1] && hit(sx, 74, 58, 58, 0)) this.modal = { type: 'save', replay: true };   // 구한 정령을 누르면 구출 장면 다시 보기
     if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: save.rescued[this.n - 1] ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
     if (this.p.shields.length) {
       // 보호막이 있을 때 위쪽 칸 옆에 표시
@@ -910,7 +965,8 @@ export class StageScene {
       // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
       panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
       text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
-      text('독도 포인트 +10  |  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      if (!m.replay) text('독도 포인트 +10  |  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      else text('구출 장면 다시 보기', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
       if (bg) drawFit(bg, 170, 134, W - 340, 430);
       panel(200, 584, W - 590, 76, {});
       textBox(d.saveText, 220, 590, W - 630, 64, { size: 30 });
@@ -920,7 +976,7 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['crumble'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
         const y = 108 + k * 41;
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 39);
@@ -929,6 +985,7 @@ export class StageScene {
         else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
         else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
+        else if (n === 'crumble') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 152, y + 3, 32, 32); ctx.strokeStyle = 'rgba(40,24,16,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(160, y + 14); ctx.lineTo(166, y + 22); ctx.lineTo(162, y + 30); ctx.moveTo(176, y + 12); ctx.lineTo(172, y + 22); ctx.lineTo(178, y + 28); ctx.stroke(); }
         else if (n) drawFit(img(n), 148, y + 1, 40, 37, { frame: fr });
         textBox(g, 214, y + 1, W - 360, 37, { size: 19, align: 'left' });
       });
