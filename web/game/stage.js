@@ -1,5 +1,5 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
-import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp } from './core.js';
+import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp, rrect } from './core.js';
 import { nav, Notice, CardReveal, spiritSquash, soundPanel } from './widgets.js';
 import { generateLevel } from './levelgen.js';
 
@@ -16,8 +16,14 @@ const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들
 // 9스테이지에서 로보킹을 처음 만났을 때 (원작 대사)
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
+const URCHIN_TIP = '성게를 치웠구나! 성게가 너무 많으면 바위의 해조류를 다 갉아먹어서\n바다가 하얗게 변해(갯녹음). 성게를 모두 치워 바다 숲을 살려 줘!';
+const URCHIN_DONE = '성게를 모두 치웠다! 바다 숲이 다시 살아났어.\n성게를 좋아하는 돌돔도 놀러 왔네! (독도 포인트 +10)';
+// 괭이갈매기 그림 조각 (assets/img/gull.png): 위치·크기와 부리 끝(bx,by)·발끝(feet)
+const GULL = {"idle": [{"x": 0.0, "y": 0.0, "w": 105.6, "h": 88.8, "bx": 94.2, "by": 26.4, "feet": 82.2}, {"x": 108.0, "y": 0.0, "w": 103.2, "h": 91.2, "bx": 91.8, "by": 25.2, "feet": 84.6}, {"x": 213.6, "y": 0.0, "w": 103.8, "h": 90.6, "bx": 92.4, "by": 25.2, "feet": 84.0}, {"x": 319.8, "y": 0.0, "w": 105.0, "h": 89.4, "bx": 93.6, "by": 27.0, "feet": 82.8}], "peck": [{"x": 427.2, "y": 0.0, "w": 127.8, "h": 69.6, "bx": 111.6, "by": 50.4, "feet": 63.0}], "call": [{"x": 557.4, "y": 0.0, "w": 125.4, "h": 112.8, "bx": 109.8, "by": 45.0, "feet": 106.2}], "takeoff": [{"x": 685.2, "y": 0.0, "w": 120.0, "h": 88.2, "bx": 108.6, "by": 26.4, "feet": 81.6}, {"x": 807.6, "y": 0.0, "w": 118.8, "h": 101.4, "bx": 107.4, "by": 49.8, "feet": 94.8}], "fly": [{"x": 928.8, "y": 0.0, "w": 127.8, "h": 94.2, "bx": 116.4, "by": 54.6, "feet": 87.6}, {"x": 1059.0, "y": 0.0, "w": 125.4, "h": 84.6, "bx": 114.0, "by": 42.6, "feet": 78.0}, {"x": 1186.8, "y": 0.0, "w": 133.2, "h": 69.6, "bx": 121.2, "by": 31.8, "feet": 63.0}, {"x": 1322.4, "y": 0.0, "w": 129.6, "h": 73.2, "bx": 117.6, "by": 30.0, "feet": 66.6}]};
+const GULL_K = 1.05;   // 그림 1px → 화면 1.05px
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '바위에 붙은 보라색 성게를 치워라! 다 치우면 바다 숲이 살아나고 돌돔이 놀러 온다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -50,6 +56,7 @@ export class StageSelectScene {
       drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
       if (save.rescued[i]) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
+      if (save.cleared[i]) { const st = (save.stars || [])[i] || 0; for (let k = 0; k < 3; k++) text('★', x + 80 + (k - 1) * 34, y + 128, { size: 34, align: 'center', color: k < st ? '#ffcc33' : '#cfc4b3', stroke: '#3a2f28', strokeW: 5 }); }
       panel(x + 20, y + 168, 120, 46, { r: 8, inner: false, lw: 3 });
       text(`스테이지${i + 1}`, x + 80, y + 176, { size: 24, align: 'center' });
       if (hit(x, y, 160, 214, 0)) {
@@ -85,6 +92,13 @@ export class StageScene {
     this.start = [d.start[0], d.start[1] + 0.2];
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
+    // 괭이갈매기 (a쪽·b쪽 사이를 오가며 태워 줌)와 성게
+    this.gulls = (d.gulls || []).map(g => ({ ...g, side: 'a', x: g.a[0], y: g.a[1], state: 'wait', t: 0, ready: true, fl: Math.random() * 6, dir: 1 }));
+    this.urchins = (d.urchins || []).map(u => ({ ...u, got: false, grow: 0, pop: 0 }));
+    this.fishShow = 0;
+    // 별 3개: 목표 시간 안에 / 독도 포인트 모두 / 로봇에게 한 번도 안 잡히기
+    this.playTime = 0; this.robotHits = 0;
+    this.par = Math.max(60, Math.round((30 + 1.0 * (this.bounds.r - this.bounds.l)) / 10) * 10);
     this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, jt: 0.5 + Math.random() * 1.5, solved: false, tt: 1.5 + Math.random() * 2 }));
     this.stones = [];
     this.look = 0;     // 아래 내려다보기 (0~1)
@@ -126,7 +140,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', this.bgName])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'rockbream', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -187,6 +201,9 @@ export class StageScene {
     const p = this.p;
     this.readTouch();
     this.updateMovers(dt);
+    if (!this.cleared) this.playTime += dt;
+    this.updateGulls(dt);
+    if (p.riding) this.rideGull(dt); else {
     const left = keyDown('ArrowLeft', 'KeyA') || this.touch.left;
     const right = keyDown('ArrowRight', 'KeyD') || this.touch.right;
     const jumpHit = keyHit('Space', 'ArrowUp', 'KeyW') || this.touch.jumpHit;
@@ -226,6 +243,7 @@ export class StageScene {
       voidFall = !this.solids.some(under) && !moverUnder;
     }
     if (p.y < this.bounds.b - 3 || voidFall || this.collide(this.pbox(), this.deadly)) this.respawn();
+    }   // (갈매기에 매달려 있지 않을 때만 걷기·점프)
 
     // 로봇
     for (const rb of this.robots) {
@@ -294,6 +312,7 @@ export class StageScene {
           this.splash.push({ x: p.x, y: p.y, t: 0.4, shield: true });
         } else {
           audio.sfx('hurt');
+          this.robotHits++;
           this.respawn();
         }
       }
@@ -325,6 +344,17 @@ export class StageScene {
     for (const c of this.coins) {
       if (!c.got && Math.abs(c.x - p.x) < 0.55 && Math.abs(c.y - (p.y - 0.08)) < 0.6) { c.got = true; save.dp += 3; persist(); audio.sfx('coin'); }
     }
+    // 성게: 닿으면 치움. 처음 한 번은 왜 치우는지 알려 주고, 다 치우면 돌돔이 놀러 옴
+    for (const u of this.urchins) {
+      if (u.pop > 0) u.pop -= dt;
+      if (u.got) { if (u.grow < 1) u.grow = Math.min(1, u.grow + dt * 1.2); continue; }
+      if (Math.abs(u.x - p.x) < 0.6 && Math.abs(u.y - (p.y - 0.08)) < 0.65) {
+        u.got = true; u.pop = 0.4; save.dp += 2; persist(); audio.sfx('urchin');
+        if (this.urchins.every(v => v.got)) { save.dp += 10; persist(); this.fishShow = 0.01; audio.sfx('good'); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_DONE }; }
+        else if (!save.tips.urchin) { save.tips.urchin = true; persist(); this.modal = { type: 'msg', face: 'daddy', text: URCHIN_TIP }; }
+      }
+    }
+    if (this.fishShow > 0) { this.fishShow += dt; if (this.fishShow > 8) this.fishShow = 0; }
     // 열쇠
     for (const k of this.keys) {
       if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.start = [k.x, k.y - 0.25]; audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
@@ -439,6 +469,71 @@ export class StageScene {
     this.stones.push({ x: sx, y: sy, vx: dx / T, vy: (dy + 0.5 * g * T * T) / T, t: 0, rot: 0 });
     audio.sfx('throw', this.near(rb.x, rb.y));
   }
+  // ---------------------------------------------------------------- 괭이갈매기
+  gullFly(g, rider) {
+    const from = g.side, to = from === 'a' ? 'b' : 'a';
+    g.state = 'fly'; g.from = from; g.to = to; g.t = 0; g.rider = rider;
+    g.T = 1.3 + Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]) * 0.12;
+    const sp = this.near(g.x, g.y, 12); if (rider || sp.vol > 0.1) audio.sfx('gull', rider ? {} : sp);
+    if (rider) { const p = this.p; p.riding = g; p.vx = p.vy = 0; p.kb = 0; g.off0 = [p.x - g.x, p.y - g.y]; }
+  }
+  updateGulls(dt) {
+    const p = this.p;
+    for (const g of this.gulls) {
+      g.fl += dt;
+      if (g.state === 'wait') {
+        const home = g[g.side], other = g.side === 'a' ? g.b : g.a;
+        g.x = home[0]; g.y = home[1];
+        g.dir = Math.sign(other[0] - home[0]) || 1;
+        // 몸통 자리(부리보다 조금 뒤)와 주인공 사이
+        const dx = p.x - (g.x - 0.7 * g.dir), dy = p.y - (g.y - 0.54);
+        const dist = Math.hypot(dx, dy);
+        // 내려 준 뒤 잠깐(0.6초)은 다시 태우지 않음
+        if (!g.ready) { g.cool = (g.cool ?? 0.6) - dt; if (g.cool <= 0) { g.ready = true; g.cool = undefined; } }
+        // 가끔 바닥을 콕콕 쪼고, 주인공이 다가오면 끼룩! 하고 부름
+        g.peck = (g.peck ?? 2 + Math.random() * 3) - dt;
+        if (g.peck < -0.7) g.peck = 3 + Math.random() * 4;
+        const near = g.ready && !p.riding && dist < 4;
+        if (near && !g.called) { g.called = true; const sp = this.near(g.x, g.y, 8); audio.sfx('gull', sp); }
+        if (dist > 6) g.called = false;
+        g.near = near;
+        // 바다 쪽(갈매기가 보는 쪽)으로 걸어 들어오면 태워 줌 (내린 자리에서 반대로 걸어가면 안 태움)
+        if (g.ready && !p.riding && Math.abs(dx) < 0.95 && Math.abs(dy) < 0.8 && p.vx * g.dir > 0) this.gullFly(g, true);
+        // 주인공이 반대편에 있으면 빈 몸으로 마중 나감 (돌아올 때도 탈 수 있게)
+        else if (!p.riding && Math.hypot(p.x - other[0], p.y - other[1]) < 6 && Math.hypot(p.x - home[0], p.y - home[1]) > 8) this.gullFly(g, false);
+      } else {
+        g.t += dt;
+        const A = g[g.from], B = g[g.to], dir = Math.sign(B[0] - A[0]) || 1;
+        if (g.t <= g.T) {
+          // 건너편 발판 위(자리보다 2.2칸 안쪽)까지 날아가서 주인공을 내려놓음
+          const E = [B[0] + dir * 2.2, B[1] + 0.3];
+          const u = Math.min(1, g.t / g.T), sm = u * u * (3 - 2 * u);
+          g.x = A[0] + (E[0] - A[0]) * sm;
+          g.y = A[1] + (E[1] - A[1]) * sm + (g.peak - Math.max(A[1], E[1])) * 4 * u * (1 - u);
+          g.dir = dir;
+          if (g.rider && u >= 0.92) {
+            g.rider = false; g.ready = false;
+            p.riding = null; p.vx = 0; p.vy = 0; p.lastGround = p.y; p.airJumps = 1; p.coyote = 0;
+          }
+          g.sx = g.x; g.sy = g.y;
+        } else {
+          // 내려놓은 뒤 제자리(발판 끝)로 뒤돌아 살짝 날아가 앉음
+          const v = Math.min(1, (g.t - g.T) / 0.45);
+          g.x = g.sx + (B[0] - g.sx) * v; g.y = g.sy + (B[1] - g.sy) * v + Math.sin(v * Math.PI) * 0.3;
+          g.dir = -dir;
+          if (v >= 1) { g.state = 'wait'; g.side = g.to; g.x = B[0]; g.y = B[1]; }
+        }
+      }
+    }
+  }
+  rideGull(dt) {
+    const p = this.p, g = p.riding;
+    // 날아오르는 처음 0.35초 동안 발에 매달린 자리로 부드럽게 옮겨 감
+    const k = Math.min(1, g.t / 0.35), tx = -0.6 * g.dir, ty = -1.1;
+    const ox = g.off0 ? g.off0[0] + (tx - g.off0[0]) * k : tx, oy = g.off0 ? g.off0[1] + (ty - g.off0[1]) * k : ty;
+    p.x = g.x + ox; p.y = g.y + oy; p.vx = p.vy = 0; p.ground = false; p.face = g.dir; p.anim += dt;
+    if (p.blink > 0) p.blink -= dt;
+  }
   respawn() {
     const p = this.p; p.kb = 0;   // 보호막(p.shields)은 떨어져서 다시 시작해도 그대로 남음 (스테이지를 나가면 새 판이라 없어짐)
     p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2; p.lastGround = p.y;
@@ -457,16 +552,26 @@ export class StageScene {
     const n = this.n;
     if (n === 10) {
       if (!save.rescued.every(Boolean)) { this.modal = { type: 'notpass' }; this.cleared = false; this.door.open = false; this.p.x -= 1.5; return; }
-      save.cleared[9] = true; persist();
+      save.cleared[9] = true; this.recordStars(); persist();
       go(nav.beforeFinal());
       return;
     }
     save.cleared[n - 1] = true;
     save.unlockedStage = Math.max(save.unlockedStage, n + 1);
+    this.recordStars();
     persist();
     audio.sfx('good');
     if (n === 8 && !save.leeSeen) { save.leeSeen = true; persist(); go(nav.leeReveal()); return; }
-    this.modal = { type: 'clear' };
+    this.modal = { type: 'clear', t0: this.t, shown: 0 };
+  }
+  // 별 3개 기록 (가장 많이 받은 개수를 남김)
+  recordStars() {
+    const n = this.n;
+    this.starGot = [this.playTime <= this.par, this.coins.every(c => c.got), this.robotHits === 0];
+    const cnt = this.starGot.filter(Boolean).length;
+    if (!Array.isArray(save.stars)) save.stars = Array(10).fill(0);
+    this.starBest = save.stars[n - 1] || 0;
+    save.stars[n - 1] = Math.max(this.starBest, cnt);
   }
   openRobotQuiz(rb) {
     // 밀어내지 않고 그 자리에 세워 둠 (발판 끝에서 밀려 떨어지지 않게). 맞힌 로봇은 다시 문제를 내지 않음
@@ -497,6 +602,7 @@ export class StageScene {
     const dd = this.diff;
     this.drawBackdrop();
     for (const t of this.tiles) if (!t.p.deadly) this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy);
+    this.drawUrchins();
     // 움직이는 발판: 지나가는 길을 점선으로 보여 주고 발판은 노란 테두리로
     for (const m of this.movers) {
       const [ax, ay] = this.w2s(m.x0 + m.w / 2, m.top - 0.5), [bx, by] = this.w2s(m.x0 + m.ax + m.w / 2, m.top - 0.5 + m.ay);
@@ -563,6 +669,7 @@ export class StageScene {
       const shake = p.kb > 0 ? Math.sin(this.t * 60) * 0.04 : 0;
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x + shake, p.y, 0.8 * 1.25, p.face < 0);
     }
+    this.drawGulls();
     if (p.shields.length) {
       // 보호막: 주인공을 감싸는 하늘색 방울 (겹친 만큼 테두리가 늘어남)
       const [bx, by] = this.w2s(p.x, p.y + 0.05), r = 40 + Math.sin(this.t * 5) * 2;
@@ -587,6 +694,7 @@ export class StageScene {
       text('맵을 불러오는 중...', W / 2, H / 2 + 20, { size: 32, align: 'center', color: '#f4e3c3' });
       return;
     }
+    if (this.fishShow > 0) this.drawFish();
     this.drawHUD(layer);
     this.drawMinimap();
     if (this.modal) this.drawModal();
@@ -649,6 +757,101 @@ export class StageScene {
     const ox = -((this.cam.x * U * 0.12) % bw + bw) % bw;
     for (let k = -1; k < 2; k++) ctx.drawImage(bg, Math.round(ox + k * bw), y, bw, bh);
   }
+  // 성게 하나 (보라색 공 + 가시)
+  drawUrchinAt(cx, cy, r, t = 0) {
+    ctx.save();
+    ctx.strokeStyle = '#2a1238'; ctx.lineWidth = Math.max(1.5, r * 0.12); ctx.lineCap = 'round';
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2 + Math.sin(t * 2 + k) * 0.05, L = r * (1.55 + (k % 3) * 0.18);
+      if (Math.sin(a) > 0.55) continue;   // 바닥에 붙은 쪽은 가시를 덜
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.6, cy + Math.sin(a) * r * 0.6); ctx.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); ctx.stroke();
+    }
+    ctx.fillStyle = '#5b2a7a'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8a4fb0'; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // 성게가 있는 발판은 하얗게(갯녹음), 치우면 초록 해조류가 자라남
+  drawUrchins() {
+    for (const u of this.urchins) {
+      const pl = u.plat, [sx, sy] = this.w2s(pl.x0, pl.top);
+      if (sx > W + 50 || sx + pl.w * U < -50 || sy < -80 || sy > H + 80) continue;
+      if (!u.got) {
+        ctx.save(); ctx.fillStyle = 'rgba(245,245,240,.85)';
+        for (let k = 0; k < pl.w * 3; k++) {
+          const bx = sx + (k + 0.5) * U / 3, w = U * (0.16 + ((k * 37) % 7) * 0.02);
+          ctx.beginPath(); ctx.ellipse(bx, sy + 3, w, U * 0.09, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        const [ux, uy] = this.w2s(u.x, u.y + Math.sin(this.t * 2 + u.x) * 0.02);
+        this.drawUrchinAt(ux, uy, U * 0.22, this.t);
+        // 처음에는 성게가 무서운 것처럼 보일 수 있으니, 가까이 가면 '닿아서 치우기!' 안내
+        if (!save.tips.urchin && Math.hypot(this.p.x - u.x, this.p.y - u.y) < 4) text('닿아서 치우기!', ux, uy - 52 + Math.sin(this.t * 5) * 3, { size: 20, align: 'center', color: '#fff', stroke: '#5b2a7a', strokeW: 5 });
+      } else {
+        ctx.save(); ctx.lineCap = 'round';
+        for (let k = 0; k < pl.w * 2; k++) {
+          const bx = sx + (k + 0.5) * U / 2, h = U * (0.35 + ((k * 13) % 5) * 0.06) * u.grow;
+          ctx.strokeStyle = k % 2 ? '#2f8f4e' : '#46b05f'; ctx.lineWidth = Math.max(2, U * 0.07);
+          ctx.beginPath(); ctx.moveTo(bx, sy);
+          for (let j = 1; j <= 4; j++) ctx.lineTo(bx + Math.sin(this.t * 2.5 + k + j) * U * 0.06 * j / 4, sy - h * j / 4);
+          ctx.stroke();
+        }
+        ctx.restore();
+        if (u.pop > 0) {
+          const [ux, uy] = this.w2s(u.x, u.y), k = 1 - u.pop / 0.4;
+          ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#8fd3ff'; ctx.lineWidth = 3;
+          for (let j = 0; j < 5; j++) { const a = j * 1.26; ctx.beginPath(); ctx.arc(ux + Math.cos(a) * k * U * 0.6, uy - k * U * 0.5 + Math.sin(a) * k * U * 0.3, U * 0.08, 0, Math.PI * 2); ctx.stroke(); }
+          ctx.restore();
+        }
+      }
+    }
+  }
+  // 괭이갈매기: 발판 끝에 서서 기다리다가(가끔 콕콕 쪼고, 다가오면 끼룩!) 주인공을 발에 매달고 날아감
+  gullFrame(g) {
+    if (g.state === 'fly') {
+      if (g.t < 0.3) return GULL.takeoff[Math.min(1, Math.floor(g.t / 0.15))];
+      if (g.t > g.T * 0.9) return GULL.takeoff[1];
+      const cyc = [0, 1, 2, 3, 2, 1];
+      return GULL.fly[cyc[Math.floor(g.fl / 0.08) % cyc.length]];
+    }
+    if (g.near) return Math.floor(this.t / 0.45) % 2 ? GULL.call[0] : GULL.idle[0];
+    if (g.peck < 0) return GULL.peck[0];
+    return GULL.idle[Math.floor(g.fl / 0.35) % GULL.idle.length];
+  }
+  drawGulls() {
+    const im = img('gull');
+    for (const g of this.gulls) {
+      const [gx, gy] = this.w2s(g.x, g.y);
+      if (gx < -200 || gx > W + 200) continue;
+      const f = this.gullFrame(g), k = GULL_K;
+      ctx.save(); ctx.translate(gx, gy); if (g.dir < 0) ctx.scale(-1, 1);
+      ctx.imageSmoothingEnabled = true;   // 큰 그림을 줄여 그릴 때 깔끔하게
+      ctx.drawImage(im, f.x, f.y, f.w, f.h, -f.bx * k, -f.by * k, f.w * k, f.h * k);
+      ctx.restore();
+      if (g.state === 'wait' && g.near) {
+        text('매달리기!', gx - 0.7 * g.dir * U, gy - 74 + Math.sin(this.t * 5) * 3, { size: 22, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 5 });
+      }
+    }
+  }
+  // 성게를 다 치우면 화면 아래 작은 '바닷속 창'에 돌돔이 헤엄쳐 지나감
+  drawFish() {
+    const f = this.fishShow, a = Math.min(1, f / 0.4, (8 - f) / 0.5);
+    const bw = 560, bh = 160, bx = (W - bw) / 2, by = H - bh - 70;
+    ctx.save(); ctx.globalAlpha = Math.max(0, a);
+    panel(bx - 6, by - 6, bw + 12, bh + 12, { r: 18, inner: false, fill: '#3a2f28' });
+    const gr = ctx.createLinearGradient(0, by, 0, by + bh); gr.addColorStop(0, '#5fb6e0'); gr.addColorStop(1, '#1f5f8f');
+    ctx.fillStyle = gr; rrect(bx, by, bw, bh, 14); ctx.fill();
+    ctx.save(); rrect(bx, by, bw, bh, 14); ctx.clip();
+    // 바닥 해조류
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 14; k++) { const x0 = bx + 20 + k * 40; ctx.strokeStyle = k % 2 ? '#2f8f4e' : '#46b05f'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x0, by + bh); for (let j = 1; j <= 4; j++) ctx.lineTo(x0 + Math.sin(this.t * 2 + k + j) * 6, by + bh - j * 14); ctx.stroke(); }
+    const fx = bx - 140 + (bw + 280) * Math.min(1, f / 7.5), fy = by + 10 + Math.sin(f * 3) * 8;
+    ctx.imageSmoothingEnabled = true; drawFit(img('rockbream'), fx - 80, fy + 18, 160, 114); ctx.imageSmoothingEnabled = false;
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
+    for (let j = 0; j < 4; j++) { const bt = (f * 1.3 + j * 0.25) % 1; ctx.beginPath(); ctx.arc(fx + 60 + bt * 10, fy + 60 - bt * 60, 3 + j, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+    text('돌돔이 놀러 왔어요!', W / 2, by - 44, { size: 28, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+    ctx.restore();
+  }
   drawMinimap() {
     const x = W - 270, y = 78, w = 250, h = 130;
     // 맵이 길면 주인공 주변 70칸만 보여 줌
@@ -683,6 +886,8 @@ export class StageScene {
       else if (rb.brown) mark(rb.x, rb.y, 2.6, '#9a6a3a', 'diamond');
       else mark(rb.x, rb.y, 2, '#c0392b', 'square');
     }
+    for (const u of this.urchins) if (!u.got) dot(u.x, u.y, 2.2, '#5b2a7a');
+    for (const g of this.gulls) { dot(g.x, g.y, 3.2, '#555'); dot(g.x, g.y, 2.2, '#fff'); }
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
     if (this.door) dot(this.door.x, this.door.y, 4, this.door.open ? '#999' : '#8e44ad');
@@ -718,6 +923,19 @@ export class StageScene {
       ctx.strokeStyle = '#3aa0e0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx + 29, hy + 29, 18, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
       if (this.p.shields.length > 1) text('×' + this.p.shields.length, hx + 29, hy + 15, { size: 24, align: 'center', color: '#1f5f8f', stroke: '#fff', strokeW: 4 });
+    }
+    // 성게 남은 수
+    if (this.urchins.length) {
+      const ux = 14 + 5 * 66, done = this.urchins.filter(u => u.got).length, all = done === this.urchins.length;
+      panel(ux, 74, 118, 58, { r: 8, inner: false, fill: all ? '#d6f0c8' : '#efe4cf', lw: 3 });
+      this.drawUrchinAt(ux + 29, 106, 11, this.t);
+      text(`${done}/${this.urchins.length}`, ux + 84, 88, { size: 26, align: 'center', color: all ? '#2f7a3a' : '#5b2a7a' });
+    }
+    // 걸린 시간 / 목표 시간 (별 하나)
+    {
+      const over = this.playTime > this.par;
+      panel(536, 12, 236, 52, { r: 8, inner: false, fill: over ? '#e8d6cc' : '#f4e3c3' });
+      text(`시간 ${fmtTime(this.playTime)} / 목표 ${fmtTime(this.par)}`, 654, 24, { size: 22, align: 'center', color: over ? '#9a3a2a' : '#2b2b2b' });
     }
     if (button('가이드', W - 280, 12, 120, 56, { size: 24 })) this.modal = { type: 'guide' };
     if (button('메뉴', W - 150, 12, 130, 56, { size: 26 }) || (keyHit('Escape') && layer === 0)) this.modal = { type: 'pause' };
@@ -791,16 +1009,18 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['urchin'], ['gull'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
-        const y = 112 + k * 50;
-        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 47);
+        const y = 108 + k * 41;
+        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 39);
         const [n, fr] = icons[k] || [];
-        if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 9, 40, 32); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 9, 40, 32); }
-        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 143, y + 2, 50, 47, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
-        else if (n === 'down') text('▼', 168, y + 5, { size: 32, align: 'center', color: '#7a3b12' });
-        else if (n) drawFit(img(n), 145, y + 2, 46, 43, { frame: fr });
-        textBox(g, 214, y + 1, W - 360, 45, { size: 20, align: 'left' });
+        if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 5, 40, 30); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 5, 40, 30); }
+        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
+        else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
+        else if (n === 'urchin') this.drawUrchinAt(168, y + 21, 10, this.t);
+        else if (n === 'gull') { const f = GULL.idle[0]; ctx.imageSmoothingEnabled = true; drawFit(img('gull'), 148, y + 1, 40, 37, { frame: [f.x, f.y, f.w, f.h] }); ctx.imageSmoothingEnabled = false; }
+        else if (n) drawFit(img(n), 148, y + 1, 40, 37, { frame: fr });
+        textBox(g, 214, y + 1, W - 360, 37, { size: 19, align: 'left' });
       });
       if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
     } else if (m.type === 'pause') {
@@ -810,12 +1030,33 @@ export class StageScene {
       if (button('스테이지 메뉴로', W / 2 - 160, 370, 320, 70, { layer: L, size: 30 })) go(nav.stageSelect());
       if (button('소리 설정', W / 2 - 160, 460, 320, 60, { layer: L, size: 26 })) soundPanel.open();
     } else if (m.type === 'clear') {
-      panel(W / 2 - 330, 150, 660, 420);
-      text(`스테이지${this.n} 클리어!`, W / 2, 190, { size: 54, align: 'center', color: '#3d7a2a' });
-      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요.\n다시 와서 구해 주세요!', W / 2 - 280, 280, 560, 90, { size: 28 });
-      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 280, 370, 560, 60, { size: 24, color: '#5a4a3a' });
-      if (this.n < 10 && button('다음 스테이지', W / 2 - 300, 460, 280, 76, { layer: L, size: 30 })) go(nav.stage(this.n + 1));
-      if (button('스테이지 메뉴', W / 2 + 20, 460, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
+      panel(W / 2 - 380, 70, 760, 580);
+      text(`스테이지${this.n} 클리어!`, W / 2, 96, { size: 54, align: 'center', color: '#3d7a2a' });
+      // 별 3개: 하나씩 톡톡 나타남
+      const el = this.t - (m.t0 ?? this.t), got = this.starGot || [false, false, false];
+      const labels = [
+        [`목표 시간 안에`, `${fmtTime(this.playTime)} / ${fmtTime(this.par)}`],
+        ['독도 포인트 모두', `${this.coins.filter(c => c.got).length} / ${this.coins.length}`],
+        ['로봇에게 안 잡히기', this.robotHits ? `${this.robotHits}번 잡힘` : '한 번도 안 잡힘'],
+      ];
+      for (let k = 0; k < 3; k++) {
+        const cx = W / 2 + (k - 1) * 230, appear = el - 0.35 - k * 0.45;
+        if (appear > 0 && (m.shown || 0) <= k) { m.shown = k + 1; if (got[k]) audio.sfx('star'); }
+        const sc = appear <= 0 ? 0 : Math.min(1, appear / 0.18) * (1 + 0.25 * Math.max(0, 1 - appear / 0.35));
+        if (sc > 0) {
+          ctx.save(); ctx.translate(cx, 222); ctx.scale(sc, sc);
+          text('★', 0, -50, { size: 96, align: 'center', color: got[k] ? '#ffcc33' : '#cfc4b3', stroke: got[k] ? '#9a6a10' : '#a99d8a', strokeW: 6 });
+          ctx.restore();
+        }
+        text(labels[k][0], cx, 290, { size: 24, align: 'center', color: got[k] ? '#2b2b2b' : '#8a7a66' });
+        text(labels[k][1], cx, 322, { size: 20, align: 'center', color: got[k] ? '#3d7a2a' : '#9a6a3a' });
+      }
+      const cnt = got.filter(Boolean).length;
+      if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 360, { size: 24, align: 'center', color: '#7a3b12' });
+      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 400, 660, 60, { size: 26 });
+      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 462, 660, 40, { size: 22, color: '#5a4a3a' });
+      if (this.n < 10 && button('다음 스테이지', W / 2 - 300, 540, 280, 76, { layer: L, size: 30 })) go(nav.stage(this.n + 1));
+      if (button('스테이지 메뉴', W / 2 + 20, 540, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
     } else if (m.type === 'notpass') {
       panel(110, 190, W - 220, 320); face('daddy');
       textBox(NOT_PASS, 320, 206, W - 450, 196, { size: 30 });

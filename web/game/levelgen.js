@@ -20,6 +20,7 @@ export function generateLevel(orig, n) {
   const movers = [];                           // 움직이는 발판
   const reserved = [];                         // 움직이는 발판이 지나가는 자리 (다른 발판을 놓지 않음)
   const coins = [];
+  const gulls = [];                            // 괭이갈매기 (넓은 바다를 건네주는 새)
   let x = -3, top = 0, last = null;
 
   const add = (x0, w, t, kind, onPath = true) => {
@@ -104,6 +105,27 @@ export function generateLevel(orig, n) {
       const q = add(mx + D + w + rand(0.6, 1.2), irand(3, 5), top + rand(-0.5, 1.0), 'path');
       last = q; top = q.top;
     },
+    // 괭이갈매기: 점프로는 못 건너는 넓은 바다. 갈매기에게 다가가면 매달려서 건너편까지 날아감 (양쪽 다 오갈 수 있음)
+    gull() {
+      if (last.w < 3) { const p = add(endOf(last) + rand(1.4, 2.0), 4, top + rand(-0.5, 0.5), 'path'); coinBetween(last, p); last = p; top = p.top; }
+      last.gullBase = true;
+      const G = rand(9, 11 + 3 * e), edge = endOf(last);
+      const landTop = top + rand(-2, top > 16 ? 0.5 : 3);
+      const q = add(edge + G, irand(4, 6), landTop, 'land');
+      q.gullBase = true;
+      // a·b: 갈매기 부리 끝 자리 (발은 발판 위). a쪽은 바다(오른쪽)를, b쪽은 바다(왼쪽)를 보고 서 있음
+      const a = [edge - 0.35, top + 0.92], b = [q.x0 + 0.35, q.top + 0.92];
+      const peak = Math.max(a[1], b[1]) + 3;
+      gulls.push({ a, b, peak });
+      reserved.push({ x0: edge - 1, w: G + 5, top: peak + 1.5, bottom: Math.min(top, landTop) - 1 });   // 날아가는 길과 내려 주는 자리 위에는 다른 발판 없음
+      // 날아가는 길에 독도 포인트 (갈매기 발에 매달린 주인공이 지나가는 자리)
+      const E = [b[0] + 2.2, b[1] + 0.3];   // 갈매기는 건너편 발판 위까지 날아가서 내려 줌
+      for (let k = 1; k <= 5; k++) {
+        const u = k / 6, sm = u * u * (3 - 2 * u);
+        coins.push([a[0] + (E[0] - a[0]) * sm - 0.6, a[1] + (E[1] - a[1]) * sm + (peak - Math.max(a[1], E[1])) * 4 * u * (1 - u) - 1.1]);
+      }
+      last = q; top = q.top;
+    },
     // 좁은 기둥 건너기
     pillars() {
       const k = irand(3, 3 + Math.round(3 * e));
@@ -124,8 +146,9 @@ export function generateLevel(orig, n) {
   if (n >= 3) pool.push('ferry', 'drop');
   if (n >= 4) pool.push('pillars', 'lift');
   if (n >= 6) pool.push('ferry', 'pillars');
+  if (n >= 4) pool.push('gull');
   const plan = ['run', 'climb', 'drop'];
-  if (n >= 2) plan.push('lift');
+  if (n >= 2) plan.push('lift', 'gull');   // 2스테이지부터 괭이갈매기 구간이 꼭 하나 이상
   if (n >= 3) plan.push('ferry');
   while (plan.length < segCount) plan.push(pick(pool));
   // 첫 구역은 달리기, 나머지는 섞되 같은 구역이 연달아 나오지 않게
@@ -191,7 +214,7 @@ export function generateLevel(orig, n) {
   const robots = [];
   const used = new Set();
   const itemPlats = new Set([...keyPlats, spiritPlat]);
-  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0);
+  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0) && !p.gullBase;   // 갈매기가 앉는 발판에는 로봇 없음
   // 1) 문제를 내는 파란 로봇 (원작 스테이지의 문제 그대로): 맵 전체에 고르게
   const qs = [...new Set(orig.robots.filter(r => r.q).map(r => r.q))];
   const qSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p));
@@ -220,6 +243,14 @@ export function generateLevel(orig, n) {
   }
   const redTarget = 2 + Math.round(2.2 * n);
   for (const p of walkSpots.slice(wi)) { if (robots.filter(r => r.walk && !r.green && !r.brown).length >= redTarget) break; if (free(p)) addWalker(p, {}); }
+  // 성게: 로봇·열쇠·정령이 없는 발판에 하나씩 (바위를 하얗게 만드는 갯녹음의 원인)
+  const urchins = [];
+  const uSpots = path.filter(p => p.w >= 2 && free(p) && p.kind !== 'pillar').sort(() => Math.random() - 0.5);
+  const uCount = Math.min(uSpots.length, 3 + Math.floor(n / 2));
+  for (let k = 0; k < uCount; k++) {
+    const p = uSpots[k]; used.add(p);
+    urchins.push({ x: p.x0 + 0.5 + irand(0, p.w - 1), y: p.top + 0.28, plat: { x0: p.x0, w: p.w, top: p.top } });
+  }
 
 
   const doorX = end.x0 + 3, flagX = end.x0 + end.w - 2;
@@ -246,6 +277,8 @@ export function generateLevel(orig, n) {
   if (spiritObj) lift(spiritObj, 0.55);
   const doorZone = { x: end.x0, y: end.top, w: end.w, h: 3 };
   const items = keyObjs.map(o => ({ x: o.x - 0.5, y: o.y - 0.5, w: 1, h: 1 }));
+  for (const u of urchins) items.push({ x: u.x - 0.45, y: u.y - 0.4, w: 0.9, h: 0.9 });
+  for (const g of gulls) for (const [gx, gy, dr] of [[...g.a, 1], [...g.b, -1]]) items.push({ x: gx - 0.7 * dr - 0.9, y: gy - 0.95, w: 1.8, h: 1.9 });
   if (spiritObj) items.push({ x: spiritObj.x - 0.7, y: spiritObj.y - 0.7, w: 1.4, h: 1.4 });
   // 독도 포인트: 지형·로봇·열쇠·정령·문·다른 포인트와 겹치면 빼기
   const placed = [];
@@ -261,7 +294,7 @@ export function generateLevel(orig, n) {
   const start = [0, 1.2];
   const deco = [{ s: 'StartGuide__StartGuide_' + (n - 1), x: -1.8, y: 0.55, sx: 1.376, sy: 1.376 }];
   return {
-    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco,
+    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco, gulls, urchins,
     topLeft: [-4, Math.max(...ys) + 6], bottomRight: [end.x0 + end.w + 2, Math.min(...ys) - 1],
     generated: true,
   };
