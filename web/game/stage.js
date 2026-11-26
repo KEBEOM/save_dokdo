@@ -140,7 +140,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'rockbream', this.bgName])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'rockbream', 'urchin', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -757,17 +757,12 @@ export class StageScene {
     const ox = -((this.cam.x * U * 0.12) % bw + bw) % bw;
     for (let k = -1; k < 2; k++) ctx.drawImage(bg, Math.round(ox + k * bw), y, bw, bh);
   }
-  // 성게 하나 (보라색 공 + 가시)
+  // 성게 하나 (제작자가 그린 성게 그림, 살짝 꿈틀거림)
   drawUrchinAt(cx, cy, r, t = 0) {
-    ctx.save();
-    ctx.strokeStyle = '#2a1238'; ctx.lineWidth = Math.max(1.5, r * 0.12); ctx.lineCap = 'round';
-    for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * Math.PI * 2 + Math.sin(t * 2 + k) * 0.05, L = r * (1.55 + (k % 3) * 0.18);
-      if (Math.sin(a) > 0.55) continue;   // 바닥에 붙은 쪽은 가시를 덜
-      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.6, cy + Math.sin(a) * r * 0.6); ctx.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); ctx.stroke();
-    }
-    ctx.fillStyle = '#5b2a7a'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8a4fb0'; ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
+    const im = img('urchin'), sz = r * 3.6;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.sin(t * 2 + cx * 0.01) * 0.06);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(im, -sz / 2, -sz / 2 * 0.94, sz, sz * 0.94);
     ctx.restore();
   }
   // 성게가 있는 발판은 하얗게(갯녹음), 치우면 초록 해조류가 자라남
@@ -783,7 +778,7 @@ export class StageScene {
         }
         ctx.restore();
         const [ux, uy] = this.w2s(u.x, u.y + Math.sin(this.t * 2 + u.x) * 0.02);
-        this.drawUrchinAt(ux, uy, U * 0.22, this.t);
+        this.drawUrchinAt(ux, uy, U * 0.26, this.t);
         // 처음에는 성게가 무서운 것처럼 보일 수 있으니, 가까이 가면 '닿아서 치우기!' 안내
         if (!save.tips.urchin && Math.hypot(this.p.x - u.x, this.p.y - u.y) < 4) text('닿아서 치우기!', ux, uy - 52 + Math.sin(this.t * 5) * 3, { size: 20, align: 'center', color: '#fff', stroke: '#5b2a7a', strokeW: 5 });
       } else {
