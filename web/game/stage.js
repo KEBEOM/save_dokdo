@@ -824,7 +824,11 @@ export class StageScene {
       const key = this.keys.find(q => q.n === k), got = key && key.got;
       const x = 14 + (k - 1) * 66, y = 74;
       panel(x, y, 58, 58, { r: 8, inner: false, fill: got ? '#fff2d6' : '#bdb3a2', lw: 3 });
-      drawFit(img('dokdo_icon'), x + 4, y + 4, 50, 50, { frame: [160, 0, 160, 160], shade: got ? null : '#000' });   // 못 얻은 열쇠는 검정 그림자
+      if (got) {
+        // 얻은 열쇠: 그림은 위쪽에 작게, 아래에 힌트 번호 (눌러서 다시 보기)
+        drawFit(img('dokdo_icon'), x + 11, y + 2, 36, 36, { frame: [160, 0, 160, 160] });
+        text(`힌트${k}`, x + 29, y + 37, { size: 17, align: 'center', color: '#7a3b12' });
+      } else drawFit(img('dokdo_icon'), x + 4, y + 4, 50, 50, { frame: [160, 0, 160, 160], shade: '#000' });   // 못 얻은 열쇠는 검정 그림자
       if (got && hit(x, y, 58, 58, 0)) this.modal = { type: 'key', n: k };
     }
     const sx = 14 + 3 * 66;
