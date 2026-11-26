@@ -296,3 +296,31 @@ class SoundPanel {
 }
 
 export const soundPanel = new SoundPanel();   // 어느 화면에서 열어도 같은 창
+
+// 만든 사람·출처 창 (내용은 data/gamedata.json의 credits에서 고칠 수 있음)
+class CreditsPanel {
+  constructor() { this.isOpen = false; }
+  open() { this.isOpen = true; }
+  draw(layer, credits) {
+    if (!this.isOpen) return;
+    dim(0.6);
+    const x = 90, y = 40, w = W - 180, h = H - 80;
+    panel(x, y, w, h);
+    text('만든 사람과 출처', W / 2, y + 22, { size: 42, align: 'center', color: '#7a3b12' });
+    ctx.fillStyle = 'rgba(122,59,18,.25)'; ctx.fillRect(x + 36, y + 82, w - 72, 2);
+    // 두 칸으로 나눠서: 왼쪽에 앞쪽 절반, 오른쪽에 뒤쪽 절반
+    const half = Math.ceil((credits || []).length / 2), colW = (w - 120) / 2;
+    const colH = list => list.reduce((a, c) => a + 56 + c.lines.length * 36, 0) - 20;
+    const tallest = Math.max(colH((credits || []).slice(0, half)), colH((credits || []).slice(half)));
+    const top = y + 96 + Math.max(0, (h - 96 - 100 - tallest) / 2);   // 제목 줄과 닫기 버튼 사이 한가운데
+    (credits || []).forEach((c, i) => {
+      const col = i < half ? 0 : 1, cx = x + 50 + col * (colW + 20);
+      let cy = top;
+      for (let j = col ? half : 0; j < i; j++) cy += 56 + credits[j].lines.length * 36;
+      text(c.h, cx, cy, { size: 30, color: '#7a3b12' });
+      c.lines.forEach((ln, k) => textBox(ln, cx + 4, cy + 44 + k * 36, colW, 34, { size: 23, align: 'left', color: '#2b2b2b', minSize: 16 }));
+    });
+    if (button('닫기', W / 2 - 90, y + h - 84, 180, 60, { layer, size: 28 }) || keyHit('Escape')) this.isOpen = false;
+  }
+}
+export const creditsPanel = new CreditsPanel();

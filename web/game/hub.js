@@ -1,6 +1,6 @@
 // 시작 화면, 독도 마을(허브), 게임 선택 화면
 import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
-import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash, soundPanel } from './widgets.js';
+import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash, soundPanel, creditsPanel } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이', '화산섬이 생긴 순서', '독도와 울릉도의 거리', '독도의 보물', '독도의 여러 이름', '옛 이름이 나오는 기록', '옛 지도 속 독도', '고려 시대 기록', '조선 시대 기록', '독도와 일본'];
 export const HERO_TITLES = ['이사부', '누군가 버리고 간 문서', '안용복', '홍순칠', '누군가 일부러 버린 문서'];
@@ -46,7 +46,7 @@ export class TitleScene {
   enter() { audio.play('daddy_theme'); }
   update(dt) { this.t += dt; }
   draw() {
-    beginUI(soundPanel.isOpen ? 2 : this.notice.open ? 1 : 0);
+    beginUI(soundPanel.isOpen || creditsPanel.isOpen ? 2 : this.notice.open ? 1 : 0);
     drawCover(img('bg1'), 0, 0, W, H);
     ctx.fillStyle = 'rgba(20,30,40,.25)'; ctx.fillRect(0, 0, W, H);
     const bob = Math.sin(this.t * 2) * 6;
@@ -64,8 +64,10 @@ export class TitleScene {
       });
     }
     soundButton();
+    if (button('만든 사람', 20, H - 70, 150, 54, { size: 22 })) creditsPanel.open();
     this.notice.draw(1);
     soundPanel.draw(2);
+    creditsPanel.draw(2, game.data.credits);
   }
 }
 
@@ -281,7 +283,7 @@ export class HubScene {
       text(title, lx + 54, y + (isSpirit ? 10 : 14), { size: 24, color: on ? '#3a2f28' : '#5a4a3a' });
       // 오른쪽 끝: 상태
       let status, col = '#5a4a3a';
-      if (on) { status = '열림 ✔'; col = '#3d8a3a'; }
+      if (on) { status = '열림 ●'; col = '#3d8a3a'; }
       else if (isSpirit && !save.cleared[i]) { status = `${i + 1}스테이지 깨기`; col = '#9a6a3a'; }
       else status = `${fmt(isSpirit ? spiritMemCost(i) : HERO_COST[i])} 포인트`;
       if (isSpirit) text(status, lx + lw - 14, y + 12, { size: 20, align: 'right', color: col });
@@ -351,7 +353,7 @@ export class HubScene {
       if (!save.rescued[i] || !save.cleared[i]) {
         // 그 스테이지를 깨고, 그 스테이지의 정령도 구출해야 마을로 데려올 수 있음
         const need = !save.cleared[i] && !save.rescued[i] ? `${i + 1}스테이지를 깨고 정령을 구출해야 해요` : !save.cleared[i] ? `${i + 1}스테이지를 깨야 해요` : `${i + 1}스테이지에서 정령을 구출해야 해요`;
-        if (button(need, 440, 484, 400, 70, { layer: L, size: 24, fill: '#cfc6b6' })) this.notice.push(`${d.spiritNames[i]}을(를) 마을로 데려오려면\n${i + 1}스테이지를 깨고, 그 스테이지에 숨어 있는\n${d.spiritNames[i]}도 구출해야 해요.\n(스테이지 ${save.cleared[i] ? '깸 ✔' : '아직'} · 정령 ${save.rescued[i] ? '구출 ✔' : '아직'})`, { title: '아직 데려올 수 없어요' });
+        if (button(need, 440, 484, 400, 70, { layer: L, size: 24, fill: '#cfc6b6' })) this.notice.push(`${d.spiritNames[i]}을(를) 마을로 데려오려면\n${i + 1}스테이지를 깨고, 그 스테이지에 숨어 있는\n${d.spiritNames[i]}도 구출해야 해요.\n(스테이지 ${save.cleared[i] ? '깸' : '아직'}, 정령 ${save.rescued[i] ? '구출함' : '아직'})`, { title: '아직 데려올 수 없어요' });
       } else if (button(`${fmt(c1)} 포인트로 구출`, 440, 484, 400, 70, { layer: L, icon: img('dp'), size: 30 })) this.buySpirit(i, 'dp', c1);
     }
     if (button('◀', 270, 195, 80, 90, { layer: L, size: 34 }) || (keyHit('ArrowLeft') && L === ui.top)) this.page = (i + 9) % 10;
@@ -433,7 +435,7 @@ export class HubScene {
     ];
     lines.forEach(([h, d], i) => {
       const y = 122 + i * 76;
-      text('• ' + h, 360, y, { size: 27, color: '#2b2b2b' });
+      text('● ' + h, 360, y, { size: 27, color: '#2b2b2b' });
       textBox(d, 384, y + 34, W - 520, 34, { size: 20, align: 'left', valign: 'top', color: '#5a4a3a' });
     });
     if (button('닫기', W - 270, H - 112, 150, 56, { layer: L })) this.panel = null;

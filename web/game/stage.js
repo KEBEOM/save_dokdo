@@ -11,13 +11,13 @@ const SHIELD_MAX = 2;          // 보호막은 최대 2겹
 
 // 9스테이지 로보킹 문제: 원래 게임 연결에서는 '시마네현 고시'가 정답으로 되어 있었지만,
 // 힌트(세종실록지리지)와 사실에 맞게 '세종실록'을 정답으로 고침
-const STAGE9_FIX = '세종실록';
+const STAGE9_FIX = '세종실록';   // 9스테이지는 로보킹 문제: 정답은 세종실록 (다른 보기는 모두 오답)
 const AMAZING = ['이럴 수가... 분명히 로봇 군단을 시켜 \n인간들이 독도에 대한 기억을 잊어버리게 했는데...', '어째서 너는 이렇게 독도에 \n대해 잘 알고 있는 거지?', '좋다... 재밌군... \n그렇다면 다음 스테이지로 넘어와라.', '나를 다시 찾아온다면 독도를 걸고 승부하자. 기다리고 있겠다...'];
 // 9스테이지에서 로보킹을 처음 만났을 때 (원작 대사)
 const KING_MEET = ['오호..너는 누구냐..', '나는 로봇들의 왕\n로보킹이다.', '너의 실력을 확인해볼 겸 \n문제를 내보겠다.'];
 const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부를 해보자.', '대결할 준비가 되었다면 문을 열고 들어와라. 나는 준비하고 있겠다.'];
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 초록 로봇 몸에 닿으면 처음 장소로!', '갈색 로봇은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -539,6 +539,11 @@ export class StageScene {
       const facingRight = rb.wind > 0 ? rb.look > 0 : rb.vx > 0;
       if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); if (rb.brown) this.drawPlane(wx, wy, rb.look > 0 ? -0.3 : Math.PI + 0.3, 1.1); else this.drawPaper(wx, wy, this.t * 2, 1.2); }
       this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      // 색을 구별하기 어려운 친구도 알아보게: 초록 로봇은 머리 위에 종이 뭉치, 갈색 로봇은 종이비행기 표시
+      if ((rb.green || rb.brown) && !(rb.wind > 0)) {
+        const [ix, iy] = this.w2s(rb.x, rb.y + 0.95 + Math.sin(this.t * 3 + rb.x) * 0.05);
+        if (ix > -50 && ix < W + 50) { if (rb.brown) this.drawPlane(ix, iy, -0.25, 1.05); else this.drawPaper(ix, iy, 0.4, 1.05); }
+      }
       if (rb.q && !rb.solved) {
         const [px, py] = this.w2s(rb.x, rb.y + 0.9);
         if (px > -50 && px < W + 50) text('?', px, py - 16, { size: 28, align: 'center', color: '#3b8ede', stroke: '#fff', strokeW: 5 });
@@ -579,7 +584,7 @@ export class StageScene {
     if (!this.ready) {
       ctx.fillStyle = 'rgba(27,43,54,.85)'; ctx.fillRect(0, 0, W, H);
       text(`스테이지${this.n}`, W / 2, H / 2 - 70, { size: 60, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
-      text('맵을 불러오는 중…', W / 2, H / 2 + 20, { size: 32, align: 'center', color: '#f4e3c3' });
+      text('맵을 불러오는 중...', W / 2, H / 2 + 20, { size: 32, align: 'center', color: '#f4e3c3' });
       return;
     }
     this.drawHUD(layer);
@@ -660,12 +665,23 @@ export class StageScene {
     ctx.fillStyle = '#e0a800';
     for (const m of this.movers) ctx.fillRect(mx(m.x), my(m.y + m.h), Math.max(1.5, m.w * sc), Math.max(1.5, 0.6 * sc));
     const dot = (px, py, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(mx(px), my(py), r, 0, Math.PI * 2); ctx.fill(); };
+    // 로봇은 색과 함께 모양으로도 구별: 빨강 네모, 초록 세모, 갈색 마름모, 파랑 동그라미, 문제 로봇은 테두리 있는 동그라미
+    const mark = (px, py, r, c, shape) => {
+      const X = mx(px), Y = my(py);
+      ctx.fillStyle = c; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (shape === 'square') ctx.rect(X - r, Y - r, r * 2, r * 2);
+      else if (shape === 'tri') { ctx.moveTo(X, Y - r * 1.2); ctx.lineTo(X + r * 1.1, Y + r * 0.8); ctx.lineTo(X - r * 1.1, Y + r * 0.8); ctx.closePath(); }
+      else if (shape === 'diamond') { ctx.moveTo(X, Y - r * 1.3); ctx.lineTo(X + r, Y); ctx.lineTo(X, Y + r * 1.3); ctx.lineTo(X - r, Y); ctx.closePath(); }
+      else ctx.arc(X, Y, r, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    };
     for (const rb of this.robots) {
       if (rb.q) { if (rb.solved) dot(rb.x, rb.y, 2.5, '#9fb6c9'); else { dot(rb.x, rb.y, 4, '#fff'); dot(rb.x, rb.y, 3, '#1f6fc4'); } }   // 문제 로봇: 진한 파랑(풀면 흐리게)
-      else if (rb.blue) dot(rb.x, rb.y, 2.5, '#4aa3e8');      // 뛰어오르는 파란 장애물 로봇
-      else if (rb.green) dot(rb.x, rb.y, 2.5, '#27ae60');
-      else if (rb.brown) dot(rb.x, rb.y, 2.5, '#9a6a3a');
-      else dot(rb.x, rb.y, 2, '#c0392b');
+      else if (rb.blue) mark(rb.x, rb.y, 2.5, '#4aa3e8', 'circle');      // 뛰어오르는 파란 장애물 로봇
+      else if (rb.green) mark(rb.x, rb.y, 2.8, '#27ae60', 'tri');
+      else if (rb.brown) mark(rb.x, rb.y, 2.6, '#9a6a3a', 'diamond');
+      else mark(rb.x, rb.y, 2, '#c0392b', 'square');
     }
     for (const k of this.keys) if (!k.got) dot(k.x, k.y, 3.5, '#e0a800');
     if (this.spirit && !this.spirit.got) dot(this.spirit.x, this.spirit.y, 4, '#2ecc71');
@@ -715,7 +731,7 @@ export class StageScene {
       panel(W - 160, H - 300, 110, 110, { r: 55, inner: false, fill: this.touch.down ? '#fff' : '#f4e3c3' }); text('▼', W - 105, H - 268, { size: 44, align: 'center' });
       ctx.globalAlpha = 1;
     } else {
-      text('←/→ 이동 · Space/↑ 점프 (공중에서 한 번 더: 더블 점프) · ↓ 아래 보기', 20, H - 40, { size: 20, color: '#fff', stroke: 'rgba(0,0,0,.55)', strokeW: 4 });
+      text('←/→ 이동  |  Space/↑ 점프 (공중에서 한 번 더: 더블 점프)  |  ↓ 아래 보기', 20, H - 40, { size: 20, color: '#fff', stroke: 'rgba(0,0,0,.55)', strokeW: 4 });
     }
   }
   drawModal() {
@@ -733,9 +749,12 @@ export class StageScene {
       if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 410 + (W - 590) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
     } else if (m.type === 'msg') {
-      panel(110, 210, W - 220, 260); face(m.face);
-      textBox(m.text, 320, 226, W - 450, 150, { size: 34 });   // 얼굴 오른쪽 빈 곳 한가운데
-      if (button('확인', W / 2 - 100, 390, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) { close(); m.then?.(); }
+      // 글이 길면(3줄 넘게) 창을 키워서 글자가 작아지지 않게
+      const big = String(m.text).split('\n').length > 2 || String(m.text).length > 60;
+      const ph = big ? 340 : 260, py = big ? 170 : 210;
+      panel(110, py, W - 220, ph); face(m.face, 130, py + (ph - 90) / 2 - 85);
+      textBox(m.text, 320, py + 16, W - 450, ph - 110, { size: 34 });   // 얼굴 오른쪽 빈 곳 한가운데
+      if (button('확인', W / 2 - 100, py + ph - 80, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) { close(); m.then?.(); }
     } else if (m.type === 'seq') {
       m.i = m.i || 0;
       panel(110, 210, W - 220, 260); face(m.face);
@@ -762,7 +781,7 @@ export class StageScene {
       // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
       panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
       text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
-      text('독도 포인트 +10  ·  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      text('독도 포인트 +10  |  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
       if (bg) drawFit(bg, 170, 134, W - 340, 430);
       panel(200, 584, W - 590, 76, {});
       textBox(d.saveText, 220, 590, W - 630, 64, { size: 30 });
