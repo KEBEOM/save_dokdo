@@ -242,7 +242,7 @@ export class HubScene {
     box(650, '영웅들과의 추억', '독도를 지킨 영웅들과\n수상한 문서 이야기를 읽어 봐요.', '독도 포인트로 퍼즐을 열어요.\n카드 뒤집기 게임으로 포인트를 모아요.', 'hero_lee', null, () => { this.panel = 'heroMem'; });
     drawPoints(130, 580, ['dp'], { w: 220 });
     // 마지막 승부를 이긴 뒤에는 엔딩을 다시 볼 수 있음
-    if (save.finalCleared && button('엔딩 다시 보기', W / 2 - 140, H - 130, 280, 56, { layer: L, size: 26 })) { this.panel = null; go(nav.endingReplay()); }
+    if (save.finalCleared && button('엔딩 다시 보기', W / 2 - 140, H - 130, 280, 56, { layer: L, size: 26, fill: '#f4b6b0' })) { this.panel = null; go(nav.endingReplay()); }
     if (button('닫기', W - 260, H - 130, 150, 56, { layer: L })) this.panel = null;
   }
   memGrid(kind) {
