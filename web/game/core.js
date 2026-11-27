@@ -184,15 +184,19 @@ function shaded(im, frame, color) {
 }
 // 색이 다른 정령 그림: 1 = 다른 색(색상 돌리기), 2 = 황금빛. 테두리(아주 어두운 색)는 그대로 둠
 const skinCache = new Map();
-export function skinned(im, frame, skin) {
+// mask를 주면 마스크가 칠해진 곳(정령 몸)만 색을 바꿈: 구출 장면 그림처럼 배경이 있는 그림용
+export function skinned(im, frame, skin, mask) {
   if (!skin || !im || !im.complete || !im.naturalWidth) return null;
-  const key = im.src + '|' + frame.join(',') + '|' + skin;
+  if (mask && (!mask.complete || !mask.naturalWidth)) return null;
+  const key = im.src + '|' + frame.join(',') + '|' + skin + (mask ? '|' + mask.src : '');
   if (skinCache.has(key)) return skinCache.get(key);
   const c = document.createElement('canvas'); c.width = frame[2]; c.height = frame[3];
   const g = c.getContext('2d'); g.drawImage(im, frame[0], frame[1], frame[2], frame[3], 0, 0, frame[2], frame[3]);
   const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  let mk = null;
+  if (mask) { const mc = document.createElement('canvas'); mc.width = c.width; mc.height = c.height; const mg = mc.getContext('2d'); mg.drawImage(mask, 0, 0, c.width, c.height); mk = mg.getImageData(0, 0, c.width, c.height).data; }
   for (let i = 0; i < a.length; i += 4) {
-    if (!a[i + 3]) continue;
+    if (!a[i + 3] || (mk && !mk[i + 3])) continue;
     let r = a[i] / 255, gg = a[i + 1] / 255, b = a[i + 2] / 255;
     const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2;
     if (l < 0.2) continue;   // 테두리

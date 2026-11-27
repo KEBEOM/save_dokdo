@@ -167,9 +167,9 @@ export class HubScene {
     const lift = w.held ? 18 : 0;
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
     drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
-    if (skin) {   // 색이 다른 정령은 반짝반짝
-      ctx.fillStyle = skin === 2 ? '#ffe066' : skin === 3 ? '#ffffff' : '#ffd6f5';
-      for (let k = 0; k < 3; k++) { const ph = this.t * 1.3 + k * 2.1 + w.i; const tw = (Math.sin(ph * 3) + 1) / 2; if (tw < 0.4) continue; const r = 3 + tw * 3; const px = Math.round(w.x + Math.cos(ph) * 40), py = Math.round(w.y - 10 + Math.sin(ph * 1.3) * 34 - lift); ctx.fillRect(px - r, py - 1, r * 2, 2); ctx.fillRect(px - 1, py - r, 2, r * 2); }
+    if (skin === 1 || skin === 2) {   // 어려운 난이도 정령일수록 더 반짝임: 흑백(쉬움)·보통은 없음, 색이 다름(어려움) 3개, 황금(매우 어려움) 5개
+      ctx.fillStyle = skin === 2 ? '#ffe066' : '#ffd6f5';
+      for (let k = 0; k < (skin === 2 ? 5 : 3); k++) { const ph = this.t * 1.3 + k * 2.1 + w.i; const tw = (Math.sin(ph * 3) + 1) / 2; if (tw < 0.4) continue; const r = 3 + tw * 3; const px = Math.round(w.x + Math.cos(ph) * 40), py = Math.round(w.y - 10 + Math.sin(ph * 1.3) * 34 - lift); ctx.fillRect(px - r, py - 1, r * 2, 2); ctx.fillRect(px - 1, py - r, 2, r * 2); }
     }
     // 석상 뒤에 가려진 부분을 누르면 석상이 열리도록, 정령은 보이는 곳만 눌림
     const behind = w.y + 40 < STATUE_FEET && inside(input.clickX, input.clickY, 559, 70, 158, 374);

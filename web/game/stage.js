@@ -1,5 +1,5 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
-import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp, rrect, font } from './core.js';
+import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp, rrect, font, skinned } from './core.js';
 import { nav, Notice, CardReveal, spiritSquash, soundPanel } from './widgets.js';
 import { generateLevel } from './levelgen.js';
 import { spiritImage } from './hub.js';
@@ -29,6 +29,10 @@ const MODES = [
   { id: 'veryhard', name: '매우 어려움', desc: '어려움 + 힌트·정령을 얻어도 세이브가 안 돼요. 깨면 황금 정령을 얻어요.' },
 ];
 // 지금 난이도에서 그 스테이지 정령을 구했는지 (난이도마다 따로 기록)
+// 난이도에 따라 스테이지 안 정령 색: 쉬움 흑백, 보통 원래 색, 어려움 색이 다름, 매우 어려움 황금
+const MODE_SKIN = { easy: 3, normal: 0, hard: 1, veryhard: 2 };
+// 구출 장면 그림 중 정령 몸 마스크가 있는 것 (9스테이지는 독도 풍경이라 그대로)
+const SAVE_MASKS = new Set(['20._WaterSave', '21._WindSave', '22._GroundSave', '23._FireSave', '24._GrassSave', '25._ShrimpSave', '26._GangchiSave', '27._SeagullSave', '28._GodSave']);
 const rescuedIn = (mode, i) => !!(save.rescuedMode && save.rescuedMode[mode] && save.rescuedMode[mode][i]);
 const modeOf = id => MODES.find(m => m.id === id) || MODES[0];
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -100,6 +104,7 @@ export class StageScene {
   constructor(n) {
     this.n = n;
     this.mode = save.mode || 'normal';
+    this.skin = MODE_SKIN[this.mode] || 0;
     const orig = game.data.stages[n - 1];
     const d = { ...orig, ...generateLevel(orig, n) };   // 들어갈 때마다 새로 만드는 랜덤 맵
     this.d = d;
@@ -170,6 +175,7 @@ export class StageScene {
     const keys = new Set(d.platforms.map(p => p.s));
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
+    if (this.skin && SAVE_MASKS.has(d.saveBg)) keys.add(d.saveBg + '_mask');   // 구출 장면 정령 색 바꾸기용
     this.ready = false;
     preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'seal', 'hardhat', 'robo_red_stun', 'robo_blue_stun', 'robo_green_stun', 'robo_brown_stun', this.bgName])).then(() => { this.ready = true; });
   }
@@ -743,6 +749,19 @@ export class StageScene {
 
   // ---------------------------------------------------------------- 그리기
   w2s(x, y) { return [(x - this.cam.x) * U + W / 2, H / 2 - (y - this.cam.y) * U]; }
+  // 이 스테이지 정령 그림을 난이도 색으로 (아직 못 불러왔으면 원래 그림)
+  spiritInfo() {
+    const info = this.d.spirit ? spriteInfo(this.d.spirit.s) : null;
+    if (!info || !info.im || !this.skin) return info;
+    const c = skinned(info.im, [0, 0, info.im.naturalWidth || info.im.width, info.im.naturalHeight || info.im.height], this.skin);
+    return c ? { ...info, im: c } : info;
+  }
+  // 구출 장면 그림: 정령 몸만 난이도 색으로
+  saveArt() {
+    const key = this.d.saveBg, bg = img('sp/' + key);
+    if (!this.skin || !SAVE_MASKS.has(key) || !bg) return bg;
+    return skinned(bg, [0, 0, bg.naturalWidth || 800, bg.naturalHeight || 450], this.skin, img('sp/' + key + '_mask')) || bg;
+  }
   drawWorldSprite(info, x, y, sx = 1, sy = 1, opts = {}) {
     if (!info || !info.im) return;
     const w = info.w * Math.abs(sx) * U, h = info.h * Math.abs(sy) * U;
@@ -817,7 +836,7 @@ export class StageScene {
     if (this.spirit && !this.spirit.got) {
       const s = this.spirit;
       // 원작 정령 몸짓(가만히 있을 때)으로 살짝 납작해졌다 돌아옴 (발바닥 기준)
-      const info = spriteInfo(s.s), [qx, qy] = spiritSquash(this.t, false);
+      const info = this.spiritInfo(), [qx, qy] = spiritSquash(this.t, false);
       const hh = info ? info.h * Math.abs(s.sy) : 1;
       this.drawWorldSprite(info, s.x, s.y - hh * (1 - qy) / 2, s.sx * qx, s.sy * qy);
       const [px, py] = this.w2s(s.x, s.y + 1);
@@ -1132,7 +1151,7 @@ export class StageScene {
     const sx = 14 + 3 * 66;
     panel(sx, 74, 58, 58, { r: 8, inner: false, fill: rescuedIn(this.mode, this.n - 1) ? '#d6f0c8' : '#bdb3a2', lw: 3 });
     if (rescuedIn(this.mode, this.n - 1) && hit(sx, 74, 58, 58, 0)) this.modal = { type: 'save', replay: true };   // 구한 정령을 누르면 구출 장면 다시 보기
-    if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
+    if (this.d.spirit) { const info = this.spiritInfo(); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
     if (this.p.shields.length) {
       // 보호막이 있을 때 위쪽 칸 옆에 표시
       const hx = 14 + 4 * 66, hy = 74;
@@ -1175,7 +1194,7 @@ export class StageScene {
       panel(140, 170, W - 280, 380);
       panel(170, 140, 230, 56, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
-      const info = d.spirit ? spriteInfo(d.spirit.s) : null;
+      const info = this.spiritInfo();
       if (info?.im) drawFit(info.im, 180, 240, 200, 200, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' });   // 아직 구출하지 않은 정령은 검은 그림자
       textBox(d.hints[m.n - 1], 410, 196, W - 590, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
       if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 410 + (W - 590) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
@@ -1209,7 +1228,7 @@ export class StageScene {
         if (button(a.t, x, y, 500, 116, { layer: L, size: 32 })) this.answerGate(a);
       });
     } else if (m.type === 'save') {
-      const bg = img('sp/' + d.saveBg);
+      const bg = this.saveArt();
       // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
       panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
       text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
@@ -1231,7 +1250,7 @@ export class StageScene {
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 34);
         const [n, fr] = icons[k] || [];
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 5, 40, 30); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 5, 40, 30); }
-        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }
+        else if (n === 'spirit') { const info = this.spiritInfo(); if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
         else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
         else if (n === 'stun') { ctx.drawImage(img('robo_red_stun'), 4 * 80, 0, 80, 112, 150, y - 12, 34, 48); }
