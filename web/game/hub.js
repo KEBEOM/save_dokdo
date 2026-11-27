@@ -358,8 +358,8 @@ export class HubScene {
     if (shown) {
       // 마을에서 보일 모습 고르기: 보통 / 색이 다른(어려움으로 깸) / 황금(매우 어려움으로 깸)
       text('구출 성공!', 460, 108, { size: 22, color: '#a8e08a' });
-      // 보통 · 흑백(쉬움) · 색이 다름(어려움) · 황금(매우 어려움)
-      [0, 3, 1, 2].forEach((k, j) => {
+      // 흑백(쉬움) · 보통 · 색이 다름(어려움) · 황금(매우 어려움)
+      [3, 0, 1, 2].forEach((k, j) => {
         const bx = 446 + j * 98, by = 470, have = k === 0 || ((save.shiny[i] || 0) & SKIN_BIT[k]) !== 0, sel = (save.skin[i] || 0) === k;
         panel(bx, by, 92, 92, { r: 10, inner: false, lw: sel ? 5 : 3, fill: sel ? '#fff2c0' : have ? '#f4e3c3' : '#cfc6b6', line: sel ? '#c0702a' : '#3a2f28' });
         const sk = spiritImage(i, k);
