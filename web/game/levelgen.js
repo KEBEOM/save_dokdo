@@ -223,7 +223,7 @@ function makeLevel(orig, n) {
     const order = path.map((p, i) => i).sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
     for (const i of order) {
       const base = path[i];
-      if (takenBase.has(base) || !far(base)) continue;
+      if (takenBase.has(base) || !far(base) || base.sealBase) continue;   // 강치가 있는 발판에는 힌트·정령을 두지 않음
       const p = Math.random() < bonusChance ? bonusAbove(base) : base;
       if (p !== base && !far(p)) continue;
       takenBase.add(base); itemSpots.push([p.x0 + p.w / 2, p.top]);
