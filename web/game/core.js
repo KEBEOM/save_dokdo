@@ -85,7 +85,8 @@ export function defaultSave() {
     dp: 0, hearts: 0, savePts: 0,
     introSeen: false, runIntroSeen: false, leeSeen: false,
     unlockedStage: 1, cleared: Array(10).fill(false),
-    rescued: Array(10).fill(false),      // 달리기에서 구한 정령 (isGetSpirit)
+    rescued: Array(10).fill(false),      // 달리기에서 구한 정령 (isGetSpirit): 어느 난이도든 한 번이라도 구하면 true (마을·마지막 승부용)
+    rescuedMode: { easy: Array(10).fill(false), normal: Array(10).fill(false), hard: Array(10).fill(false), veryhard: Array(10).fill(false) },   // 난이도마다 따로 구한 정령
     shown: Array(10).fill(false),        // 마을에 불러낸 정령
     keys: {},                            // 스테이지별 열쇠 [bool,bool,bool]
     coins: {},                           // 스테이지별 먹은 독도 포인트 번호
@@ -96,7 +97,7 @@ export function defaultSave() {
     easter: 0, finalCleared: false, lastCardScore: 0,
     stars: Array(10).fill(0),            // 스테이지마다 받은 별 (가장 많이 받은 개수)
     bestTime: Array(10).fill(0),         // 스테이지마다 가장 빨리 깬 시간(초), 0이면 아직 없음
-    mode: 'normal',                      // 달리기 모드: normal(보통) · hard(어려움) · veryhard(매우 어려움)
+    mode: 'normal',                      // 달리기 모드: easy(쉬움) · normal(보통) · hard(어려움) · veryhard(매우 어려움)
     shiny: Array(10).fill(0),            // 얻은 정령 모습: 1 = 어려움으로 깸(색이 다름), 2 = 매우 어려움으로 깸(황금), 4 = 쉬움으로 깸(흑백)
     skin: Array(10).fill(0),             // 마을에 데려온 정령 모습: 0 보통, 1 색이 다름, 2 황금, 3 흑백
     tips: {},                            // 한 번만 보여 주는 안내
@@ -107,7 +108,11 @@ function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
-      const s = Object.assign(defaultSave(), JSON.parse(raw));
+      const data = JSON.parse(raw);
+      const s = Object.assign(defaultSave(), data);
+      // 난이도별 구출 기록이 없던 예전 저장: 그때까지 구한 정령은 '보통'에서 구한 것으로 옮김
+      if (!data.rescuedMode) s.rescuedMode.normal = (s.rescued || []).map(Boolean);
+      for (const m of ['easy', 'normal', 'hard', 'veryhard']) if (!Array.isArray(s.rescuedMode[m])) s.rescuedMode[m] = Array(10).fill(false);
       // 화폐를 독도 포인트 하나로 통일: 예전 카드 점수(÷10)와 구출 포인트를 옮겨 담음
       if (s.hearts || s.savePts) { s.dp += Math.floor((s.hearts || 0) / 10) + (s.savePts || 0); s.hearts = 0; s.savePts = 0; }
       return s;

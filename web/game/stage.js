@@ -28,6 +28,8 @@ const MODES = [
   { id: 'hard', name: '어려움', desc: '로봇은 밟아도 처음 장소로! 깨면 그 스테이지의 색이 다른 정령을 얻어요.' },
   { id: 'veryhard', name: '매우 어려움', desc: '어려움 + 힌트·정령을 얻어도 세이브가 안 돼요. 깨면 황금 정령을 얻어요.' },
 ];
+// 지금 난이도에서 그 스테이지 정령을 구했는지 (난이도마다 따로 기록)
+const rescuedIn = (mode, i) => !!(save.rescuedMode && save.rescuedMode[mode] && save.rescuedMode[mode][i]);
 const modeOf = id => MODES.find(m => m.id === id) || MODES[0];
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
@@ -72,7 +74,7 @@ export class StageSelectScene {
       const bob = open ? Math.sin(this.t * 2 + i) * 4 : 0;
       drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
-      if (save.rescued[i]) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
+      if (rescuedIn(cur, i)) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
       // 얻은 색이 다른 정령 표시 (분홍 = 색이 다른, 노랑 = 황금)
       const sh = (save.shiny || [])[i] || 0;
       if (sh & 1) text('★', x + 14, y - 6, { size: 26, color: '#ff9ad8', stroke: '#3a2f28', strokeW: 4 });
@@ -87,7 +89,7 @@ export class StageSelectScene {
         else this.notice.push(`스테이지${i} 을(를) 먼저 깨야 열려요!`);
       }
     }
-    text(`구출한 정령 ${save.rescued.filter(Boolean).length} / 10`, 60, H - 70, { size: 30, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
+    text(`${modeOf(cur).name} 모드에서 구출한 정령 ${save.rescued.map((_, i) => rescuedIn(cur, i)).filter(Boolean).length} / 10`, 60, H - 70, { size: 30, color: '#fff', stroke: '#2b2b2b', strokeW: 6 });
     if (button('돌아가기', W - 240, H - 100, 200, 70, { size: 30 })) go(nav.select());
     this.notice.draw(1);
   }
@@ -154,7 +156,7 @@ export class StageScene {
     // 움직이는 발판 (엘리베이터·나룻배)
     this.movers = (d.movers || []).map(m => ({ ...m, x: m.x0, y: m.top - 1, w: m.w, h: 1, t: m.phase / ((m.speed * Math.PI) / Math.max(m.ax, m.ay)) }));
     for (const m of this.movers) this.placeMover(m);
-    this.spirit = d.spirit && !save.rescued[n - 1] ? { ...d.spirit, got: false } : null;
+    this.spirit = d.spirit && !rescuedIn(this.mode, n - 1) ? { ...d.spirit, got: false } : null;   // 이 난이도에서 아직 안 구했으면 정령이 나옴
     this.door = { ...d.door, open: false };
     this.flag = d.flag;
     this.p = { shields: [], lastGround: this.start[1], x: this.start[0], y: this.start[1], vx: 0, vy: 0, ground: false, coyote: 0, buffer: 0, airJumps: 1, puff: 0, face: 1, anim: 0, blink: 0 };
@@ -412,7 +414,7 @@ export class StageScene {
     if (s && !s.got) {
       const info = spriteInfo(s.s); const half = info ? Math.max(info.w * Math.abs(s.sx), 0.8) / 2 : 0.6;
       if (Math.abs(s.x - p.x) < half + 0.2 && Math.abs(s.y - p.y) < half + 0.3) {
-        s.got = true; save.rescued[this.n - 1] = true; save.dp += 10; persist();
+        s.got = true; save.rescued[this.n - 1] = true; save.rescuedMode[this.mode][this.n - 1] = true; save.dp += 10; persist();
         this.setCheckpoint(s.x, s.y - 0.15);   // 정령을 구한 자리도 체크포인트 (떨어지면 여기서 다시 시작)
         audio.sfx('good'); this.modal = { type: 'save' };
       }
@@ -727,8 +729,8 @@ export class StageScene {
     // 어려움 → 색이 다른, 매우 어려움 → 황금 (매우 어려움으로 깨면 색이 다른도 함께)
     if (!Array.isArray(save.shiny)) save.shiny = Array(10).fill(0);
     // 그 스테이지 정령을 구출한 상태로 깨야 색이 다른를 얻음
-    const gain = !save.rescued[n - 1] ? 0 : { easy: 4, hard: 1, veryhard: 3 }[this.mode] || 0, before = save.shiny[n - 1] || 0;
-    this.shinyNeedsSpirit = this.mode !== 'normal' && !save.rescued[n - 1];
+    const gain = !rescuedIn(this.mode, n - 1) ? 0 : { easy: 4, hard: 1, veryhard: 3 }[this.mode] || 0, before = save.shiny[n - 1] || 0;
+    this.shinyNeedsSpirit = this.mode !== 'normal' && !rescuedIn(this.mode, n - 1);
     save.shiny[n - 1] = before | gain;
     this.newShiny = gain & ~before;   // 이번에 새로 얻은 것
   }
@@ -1128,9 +1130,9 @@ export class StageScene {
       if (got && hit(x, y, 58, 58, 0)) this.modal = { type: 'key', n: k };
     }
     const sx = 14 + 3 * 66;
-    panel(sx, 74, 58, 58, { r: 8, inner: false, fill: save.rescued[this.n - 1] ? '#d6f0c8' : '#bdb3a2', lw: 3 });
-    if (save.rescued[this.n - 1] && hit(sx, 74, 58, 58, 0)) this.modal = { type: 'save', replay: true };   // 구한 정령을 누르면 구출 장면 다시 보기
-    if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: save.rescued[this.n - 1] ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
+    panel(sx, 74, 58, 58, { r: 8, inner: false, fill: rescuedIn(this.mode, this.n - 1) ? '#d6f0c8' : '#bdb3a2', lw: 3 });
+    if (rescuedIn(this.mode, this.n - 1) && hit(sx, 74, 58, 58, 0)) this.modal = { type: 'save', replay: true };   // 구한 정령을 누르면 구출 장면 다시 보기
+    if (this.d.spirit) { const info = spriteInfo(this.d.spirit.s); if (info?.im) drawFit(info.im, sx + 4, 78, 50, 50, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }   // 못 구한 정령은 검정 그림자
     if (this.p.shields.length) {
       // 보호막이 있을 때 위쪽 칸 옆에 표시
       const hx = 14 + 4 * 66, hy = 74;
@@ -1174,7 +1176,7 @@ export class StageScene {
       panel(170, 140, 230, 56, { fill: '#3a2f28', line: '#f4e3c3', inner: false });
       text(`정령의 힌트${m.n}`, 285, 150, { size: 30, color: '#fff', align: 'center' });
       const info = d.spirit ? spriteInfo(d.spirit.s) : null;
-      if (info?.im) drawFit(info.im, 180, 240, 200, 200, { shade: save.rescued[this.n - 1] ? null : '#000' });   // 아직 구출하지 않은 정령은 검은 그림자
+      if (info?.im) drawFit(info.im, 180, 240, 200, 200, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' });   // 아직 구출하지 않은 정령은 검은 그림자
       textBox(d.hints[m.n - 1], 410, 196, W - 590, m.checkpoint ? 232 : 260, { size: 30 });   // 정령 그림 오른쪽 빈 곳 한가운데
       if (m.checkpoint) text('★ 이제 떨어지면 이 자리에서 다시 시작해요', 410 + (W - 590) / 2, 436, { size: 22, align: 'center', color: '#7a5a3a' });
       if (button('확인', W / 2 - 100, 470, 200, 60, { layer: L }) || keyHit('Enter', 'Space')) close();
@@ -1229,7 +1231,7 @@ export class StageScene {
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 34);
         const [n, fr] = icons[k] || [];
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 5, 40, 30); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 5, 40, 30); }
-        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
+        else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: rescuedIn(this.mode, this.n - 1) ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
         else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
         else if (n === 'stun') { ctx.drawImage(img('robo_red_stun'), 4 * 80, 0, 80, 112, 150, y - 12, 34, 48); }
@@ -1279,7 +1281,7 @@ export class StageScene {
         text(msg, x0 + 60, 380, { size: 24, color: { 1: '#c0408a', 2: '#a06a00', 3: '#4a4a4a' }[sk] });
       } else if (el > 1.8 && this.shinyNeedsSpirit) text((this.mode === 'easy' ? '정령을 구출하고 깨야 흑백 정령을 얻어요!' : '정령을 구출하고 깨야 색이 다른 정령을 얻어요!'), W / 2, 378, { size: 24, align: 'center', color: '#c0408a' });
       else if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 378, { size: 24, align: 'center', color: '#7a3b12' });
-      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 424, 660, 46, { size: 26 });
+      textBox(rescuedIn(this.mode, this.n - 1) ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 424, 660, 46, { size: 26 });
       textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 474, 660, 40, { size: 22, color: '#5a4a3a' });
       if (this.n < 10 && button('다음 스테이지', W / 2 - 300, 540, 280, 76, { layer: L, size: 30 })) go(nav.stage(this.n + 1));
       if (button('스테이지 메뉴', W / 2 + 20, 540, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
