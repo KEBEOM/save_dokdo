@@ -84,7 +84,8 @@ export function defaultSave() {
   return {
     dp: 0, hearts: 0, savePts: 0,
     introSeen: false, runIntroSeen: false, leeSeen: false,
-    unlockedStage: 1, cleared: Array(10).fill(false),
+    unlockedStage: 1, cleared: Array(10).fill(false),   // 어느 난이도든 깬 기록 (마을·이야기용)
+    byMode: {},                          // 난이도마다 따로: { easy: { unlocked, cleared[], stars[], best[] }, ... }
     rescued: Array(10).fill(false),      // 달리기에서 구한 정령 (isGetSpirit): 어느 난이도든 한 번이라도 구하면 true (마을·마지막 승부용)
     rescuedMode: { easy: Array(10).fill(false), normal: Array(10).fill(false), hard: Array(10).fill(false), veryhard: Array(10).fill(false) },   // 난이도마다 따로 구한 정령
     shown: Array(10).fill(false),        // 마을에 불러낸 정령
@@ -114,6 +115,8 @@ function loadSave() {
       if (!data.rescuedMode) s.rescuedMode.normal = (s.rescued || []).map(Boolean);
       for (const m of ['easy', 'normal', 'hard', 'veryhard']) if (!Array.isArray(s.rescuedMode[m])) s.rescuedMode[m] = Array(10).fill(false);
       // 예전에는 매우 어려움으로 깨면 색이 다른 정령까지 함께 줬음: 어려움에서 정령을 구한 적이 없으면 색이 다른 정령은 거둬들임 (한 번만)
+      // 난이도별 스테이지 기록이 없던 예전 저장: 그때까지의 기록은 '보통'으로 옮김 (다른 난이도는 1스테이지부터)
+      if (!data.byMode) s.byMode = { normal: { unlocked: s.unlockedStage || 1, cleared: (s.cleared || []).map(Boolean), stars: (s.stars || []).slice(), best: (s.bestTime || []).slice() } };
       if (!s.shinyFix1) {
         s.shinyFix1 = true;
         (s.shiny || []).forEach((v, i) => {

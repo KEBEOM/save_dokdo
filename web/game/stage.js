@@ -33,6 +33,14 @@ const MODES = [
 const MODE_SKIN = { easy: 3, normal: 0, hard: 1, veryhard: 2 };
 // 구출 장면 그림 중 정령 몸 마스크가 있는 것 (9스테이지는 독도 풍경이라 그대로)
 const SAVE_MASKS = new Set(['20._WaterSave', '21._WindSave', '22._GroundSave', '23._FireSave', '24._GrassSave', '25._ShrimpSave', '26._GangchiSave', '27._SeagullSave', '28._GodSave']);
+// 난이도마다 따로 여는 스테이지·깬 기록·별·최고 기록
+function modeRec(mode) {
+  if (!save.byMode) save.byMode = {};
+  const r = save.byMode[mode] || (save.byMode[mode] = {});
+  if (!r.unlocked) r.unlocked = 1;
+  for (const k of ['cleared', 'stars', 'best']) if (!Array.isArray(r[k])) r[k] = Array(10).fill(k === 'cleared' ? false : 0);
+  return r;
+}
 const rescuedIn = (mode, i) => !!(save.rescuedMode && save.rescuedMode[mode] && save.rescuedMode[mode][i]);
 const modeOf = id => MODES.find(m => m.id === id) || MODES[0];
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -74,9 +82,9 @@ export class StageSelectScene {
     textBox(modeOf(cur).desc, 34, 368, 194, 140, { size: 21, color: '#fff', stroke: 'rgba(0,0,0,.8)', strokeW: 5, minSize: 16 });
     for (let i = 0; i < 10; i++) {
       const x = 268 + (i % 5) * 200, y = 64 + Math.floor(i / 5) * 268;
-      const open = i + 1 <= save.unlockedStage;
+      const rec = modeRec(cur), open = i + 1 <= rec.unlocked;   // 고른 난이도에서 열린 스테이지
       const bob = open ? Math.sin(this.t * 2 + i) * 4 : 0;
-      drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
+      drawFit(img(rec.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
       if (rescuedIn(cur, i)) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
       // 얻은 색이 다른 정령 표시 (분홍 = 색이 다른, 노랑 = 황금)
@@ -84,7 +92,7 @@ export class StageSelectScene {
       if (sh & 1) text('★', x + 14, y - 6, { size: 26, color: '#ff9ad8', stroke: '#3a2f28', strokeW: 4 });
       if (sh & 2) text('★', x + 40, y - 6, { size: 26, color: '#ffd23f', stroke: '#3a2f28', strokeW: 4 });
       if (sh & 4) text('★', x + 66, y - 6, { size: 26, color: '#d0d0d0', stroke: '#3a2f28', strokeW: 4 });
-      if (save.cleared[i]) { const st = (save.stars || [])[i] || 0; for (let k = 0; k < 3; k++) text('★', x + 80 + (k - 1) * 34, y + 128, { size: 34, align: 'center', color: k < st ? '#ffcc33' : '#cfc4b3', stroke: '#3a2f28', strokeW: 5 }); }
+      if (rec.cleared[i]) { const st = rec.stars[i] || 0; for (let k = 0; k < 3; k++) text('★', x + 80 + (k - 1) * 34, y + 128, { size: 34, align: 'center', color: k < st ? '#ffcc33' : '#cfc4b3', stroke: '#3a2f28', strokeW: 5 }); }
       panel(x + 20, y + 168, 120, 46, { r: 8, inner: false, lw: 3 });
       text(`스테이지${i + 1}`, x + 80, y + 176, { size: 24, align: 'center' });
       if (hit(x, y, 160, 214, 0)) {
@@ -706,12 +714,14 @@ export class StageScene {
     const n = this.n;
     if (n === 10) {
       if (!save.rescued.every(Boolean)) { this.modal = { type: 'notpass' }; this.cleared = false; this.door.open = false; this.p.x -= 1.5; return; }
-      save.cleared[9] = true; this.recordStars(); persist();
+      save.cleared[9] = true; modeRec(this.mode).cleared[9] = true; this.recordStars(); persist();
       go(nav.beforeFinal());
       return;
     }
     save.cleared[n - 1] = true;
     save.unlockedStage = Math.max(save.unlockedStage, n + 1);
+    const rec = modeRec(this.mode);   // 이 난이도에서 다음 스테이지 열기
+    rec.cleared[n - 1] = true; rec.unlocked = Math.max(rec.unlocked, n + 1);
     this.recordStars();
     persist();
     audio.sfx('good');
@@ -723,15 +733,19 @@ export class StageScene {
     const n = this.n;
     this.starGot = [this.playTime <= this.par, this.coins.every(c => c.got), this.robotHits === 0];
     const cnt = this.starGot.filter(Boolean).length;
+    // 별과 최고 기록은 난이도마다 따로 (전체 기록에도 가장 좋은 것을 남김)
+    const rec = modeRec(this.mode);
+    this.starBest = rec.stars[n - 1] || 0;
+    rec.stars[n - 1] = Math.max(this.starBest, cnt);
     if (!Array.isArray(save.stars)) save.stars = Array(10).fill(0);
-    this.starBest = save.stars[n - 1] || 0;
-    save.stars[n - 1] = Math.max(this.starBest, cnt);
+    save.stars[n - 1] = Math.max(save.stars[n - 1] || 0, cnt);
     // 가장 빨리 깬 시간
-    if (!Array.isArray(save.bestTime)) save.bestTime = Array(10).fill(0);
-    const prev = save.bestTime[n - 1] || 0;
+    const prev = rec.best[n - 1] || 0;
     this.newRecord = !prev || this.playTime < prev;
     this.prevBest = prev;
-    if (this.newRecord) save.bestTime[n - 1] = this.playTime;
+    if (this.newRecord) rec.best[n - 1] = this.playTime;
+    if (!Array.isArray(save.bestTime)) save.bestTime = Array(10).fill(0);
+    if (!save.bestTime[n - 1] || this.playTime < save.bestTime[n - 1]) save.bestTime[n - 1] = this.playTime;
     // 어려움 → 색이 다른, 매우 어려움 → 황금 (매우 어려움으로 깨면 색이 다른도 함께)
     if (!Array.isArray(save.shiny)) save.shiny = Array(10).fill(0);
     // 그 스테이지 정령을 구출한 상태로 깨야 색이 다른를 얻음
@@ -1166,7 +1180,7 @@ export class StageScene {
       panel(536, 12, 236, 52, { r: 8, inner: false, fill: over ? '#e8d6cc' : '#f4e3c3' });
       text(`시간 ${fmtTime(this.playTime)} / 목표 ${fmtTime(this.par)}`, 654, 24, { size: 22, align: 'center', color: over ? '#9a3a2a' : '#2b2b2b' });
       // 그 아래: 이 스테이지 최고 기록 (가장 빨리 깬 시간)
-      const best = (save.bestTime || [])[this.n - 1] || 0;
+      const best = modeRec(this.mode).best[this.n - 1] || 0;   // 지금 난이도의 최고 기록
       panel(566, 68, 176, 40, { r: 8, inner: false, fill: '#efe4cf', lw: 3 });
       text(best ? `최고 기록 ${fmtTime(best)}` : '최고 기록 없음', 654, 76, { size: 19, align: 'center', color: best ? '#7a3b12' : '#8a7a66' });
     }
