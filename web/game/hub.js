@@ -39,10 +39,11 @@ function randomSpot() {
 export function spiritImage(i, skin = 0) {
   const base = i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
   if (!skin) return base;
-  const c = skinned(base.im, base.frame, skin);   // 이로치(1)·황금(2) 정령
+  const c = skinned(base.im, base.frame, skin);   // 색이 다른(1)·황금(2) 정령
   return c ? { im: c, frame: [0, 0, 160, 160] } : base;
 }
-export const SKIN_NAMES = ['보통', '이로치', '황금'];
+export const SKIN_NAMES = ['보통', '색이 다름', '황금', '흑백'];
+export const SKIN_BIT = [0, 1, 2, 4];   // save.shiny에서 각 모습을 얻었는지 보는 자리
 
 // ================================================================ 시작 화면
 export class TitleScene {
@@ -166,8 +167,8 @@ export class HubScene {
     const lift = w.held ? 18 : 0;
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
     drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
-    if (skin) {   // 이로치 정령은 반짝반짝
-      ctx.fillStyle = skin === 2 ? '#ffe066' : '#ffd6f5';
+    if (skin) {   // 색이 다른 정령은 반짝반짝
+      ctx.fillStyle = skin === 2 ? '#ffe066' : skin === 3 ? '#ffffff' : '#ffd6f5';
       for (let k = 0; k < 3; k++) { const ph = this.t * 1.3 + k * 2.1 + w.i; const tw = (Math.sin(ph * 3) + 1) / 2; if (tw < 0.4) continue; const r = 3 + tw * 3; const px = Math.round(w.x + Math.cos(ph) * 40), py = Math.round(w.y - 10 + Math.sin(ph * 1.3) * 34 - lift); ctx.fillRect(px - r, py - 1, r * 2, 2); ctx.fillRect(px - 1, py - r, 2, r * 2); }
     }
     // 석상 뒤에 가려진 부분을 누르면 석상이 열리도록, 정령은 보이는 곳만 눌림
@@ -355,19 +356,21 @@ export class HubScene {
     text(d.spiritNames[i], 640, 392, { size: 36, align: 'center' });
     text(save.rescued[i] ? `${i + 1}스테이지에서 구출한 정령이에요` : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 436, { size: 22, align: 'center', color: '#5a4a3a' });
     if (shown) {
-      // 마을에서 보일 모습 고르기: 보통 / 이로치(어려움으로 깸) / 황금(매우 어려움으로 깸)
+      // 마을에서 보일 모습 고르기: 보통 / 색이 다른(어려움으로 깸) / 황금(매우 어려움으로 깸)
       text('구출 성공!', 460, 108, { size: 22, color: '#a8e08a' });
-      for (let k = 0; k < 3; k++) {
-        const bx = 452 + k * 128, by = 470, have = k === 0 || ((save.shiny[i] || 0) & k) !== 0, sel = (save.skin[i] || 0) === k;
-        panel(bx, by, 120, 92, { r: 10, inner: false, lw: sel ? 5 : 3, fill: sel ? '#fff2c0' : have ? '#f4e3c3' : '#cfc6b6', line: sel ? '#c0702a' : '#3a2f28' });
+      // 보통 · 흑백(쉬움) · 색이 다름(어려움) · 황금(매우 어려움)
+      [0, 3, 1, 2].forEach((k, j) => {
+        const bx = 446 + j * 98, by = 470, have = k === 0 || ((save.shiny[i] || 0) & SKIN_BIT[k]) !== 0, sel = (save.skin[i] || 0) === k;
+        panel(bx, by, 92, 92, { r: 10, inner: false, lw: sel ? 5 : 3, fill: sel ? '#fff2c0' : have ? '#f4e3c3' : '#cfc6b6', line: sel ? '#c0702a' : '#3a2f28' });
         const sk = spiritImage(i, k);
-        drawImg(sk.im, bx + 30, by + 4, 60, 60, { frame: sk.frame, shade: have ? null : '#000' });
-        text(SKIN_NAMES[k], bx + 60, by + 64, { size: 20, align: 'center', color: have ? '#3a2f28' : '#6d665c' });
-        if (hit(bx, by, 120, 92, L)) {
+        drawImg(sk.im, bx + 18, by + 4, 56, 56, { frame: sk.frame, shade: have ? null : '#000' });
+        text(SKIN_NAMES[k], bx + 46, by + 64, { size: 18, align: 'center', color: have ? '#3a2f28' : '#6d665c' });
+        if (hit(bx, by, 92, 92, L)) {
+          const modeName = { 1: '어려움', 2: '매우 어려움', 3: '쉬움' }[k], what = { 1: '색이 다른', 2: '황금', 3: '흑백' }[k];
           if (have) { save.skin[i] = k; persist(); audio.sfx('click'); }
-          else this.notice.push(`${i + 1}스테이지를 '${k === 1 ? '어려움' : '매우 어려움'}' 모드로 깨면\n${k === 1 ? '이로치(다른 색)' : '황금'} ${d.spiritNames[i]}을(를) 얻어요!\n(스테이지 메뉴 위에서 모드를 고를 수 있어요)`, { title: `${SKIN_NAMES[k]} 정령` });
+          else this.notice.push(`${i + 1}스테이지를 '${modeName}' 모드로 깨면\n${what} ${d.spiritNames[i]}을(를) 얻어요!\n(정령을 구출한 뒤에 깨야 해요. 모드는 스테이지 메뉴 위에서 골라요)`, { title: `${what} 정령` });
         }
-      }
+      });
     } else {
       const c1 = spiritShowCost(i);
       if (!save.rescued[i] || !save.cleared[i]) {

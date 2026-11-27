@@ -97,8 +97,8 @@ export function defaultSave() {
     stars: Array(10).fill(0),            // 스테이지마다 받은 별 (가장 많이 받은 개수)
     bestTime: Array(10).fill(0),         // 스테이지마다 가장 빨리 깬 시간(초), 0이면 아직 없음
     mode: 'normal',                      // 달리기 모드: normal(보통) · hard(어려움) · veryhard(매우 어려움)
-    shiny: Array(10).fill(0),            // 이로치 정령: 1 = 어려움으로 깸(이로치), 2 = 매우 어려움으로 깸(황금)
-    skin: Array(10).fill(0),             // 마을에 데려온 정령 모습: 0 보통, 1 이로치, 2 황금
+    shiny: Array(10).fill(0),            // 얻은 정령 모습: 1 = 어려움으로 깸(색이 다름), 2 = 매우 어려움으로 깸(황금), 4 = 쉬움으로 깸(흑백)
+    skin: Array(10).fill(0),             // 마을에 데려온 정령 모습: 0 보통, 1 색이 다름, 2 황금, 3 흑백
     tips: {},                            // 한 번만 보여 주는 안내
   };
 }
@@ -177,7 +177,7 @@ function shaded(im, frame, color) {
   }
   return c;
 }
-// 이로치 정령 그림: 1 = 다른 색(색상 돌리기), 2 = 황금빛. 테두리(아주 어두운 색)는 그대로 둠
+// 색이 다른 정령 그림: 1 = 다른 색(색상 돌리기), 2 = 황금빛. 테두리(아주 어두운 색)는 그대로 둠
 const skinCache = new Map();
 export function skinned(im, frame, skin) {
   if (!skin || !im || !im.complete || !im.naturalWidth) return null;
@@ -197,6 +197,7 @@ export function skinned(im, frame, skin) {
       h = mx === r ? (gg - b) / dd + (gg < b ? 6 : 0) : mx === gg ? (b - r) / dd + 2 : (r - gg) / dd + 4; h /= 6;
     }
     if (skin === 1) { if (s2 < 0.15) { h = 0.83; s2 = 0.35; } else { h = (h + 0.42) % 1; s2 = Math.min(1, s2 * 1.1); } }
+    else if (skin === 3) { s2 = 0; }   // 흑백
     else { h = 0.12; s2 = 0.85; }   // 황금
     const ll = skin === 2 ? Math.min(0.92, 0.25 + l * 0.75) : l;
     const q = ll < 0.5 ? ll * (1 + s2) : ll + s2 - ll * s2, pp = 2 * ll - q;
