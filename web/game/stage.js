@@ -1108,8 +1108,11 @@ export class StageScene {
   }
   drawHUD(layer) {
     const d = this.d;
-    panel(14, 12, 190, 52, { r: 8, inner: false });
-    text(`스테이지${this.n}`, 109, 20, { size: 30, align: 'center' });
+    // 스테이지 이름 칸 안에 난이도도 함께 표시 (칸 색 = 난이도 색)
+    const mc = { easy: ['#cfe8f6', '#1f4f7a'], normal: ['#f4e3c3', '#4a6a2a'], hard: ['#f6d6bd', '#8a3a1a'], veryhard: ['#f0c0c0', '#8a1a1a'] }[this.mode] || ['#f4e3c3', '#4a6a2a'];
+    panel(14, 10, 190, 58, { r: 8, inner: false, fill: mc[0] });
+    text(`스테이지${this.n}`, 109, 13, { size: 26, align: 'center' });
+    text(modeOf(this.mode).name, 109, 44, { size: 18, align: 'center', color: mc[1] });
     panel(214, 12, 170, 52, { r: 8, inner: false }); drawFit(img('dp'), 220, 16, 44, 44); text(fmt(save.dp), 372, 22, { size: 28, align: 'right' });
     if (this.weather !== 'clear') { panel(394, 12, 130, 52, { r: 8, inner: false, fill: this.weather === 'rain' ? '#d6e4f0' : '#f4f8ff' }); text(this.weather === 'rain' ? '비 오는 날' : '미끄러운 눈길', 459, this.weather === 'rain' ? 24 : 26, { size: this.weather === 'rain' ? 24 : 20, align: 'center', color: '#2b3a4a' }); }
     // 열쇠 3개 + 정령
@@ -1136,8 +1139,6 @@ export class StageScene {
       ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
       if (this.p.shields.length > 1) text('×' + this.p.shields.length, hx + 29, hy + 15, { size: 24, align: 'center', color: '#1f5f8f', stroke: '#fff', strokeW: 4 });
     }
-    // 모드 표시 (보통이 아닐 때)
-    if (this.mode !== 'normal') { panel(394, 68, 130, 40, { r: 8, inner: false, lw: 3, fill: { easy: '#b8dcf0', hard: '#f3c9a8', veryhard: '#e8a8a8' }[this.mode] }); text(modeOf(this.mode).name, 459, 76, { size: 20, align: 'center', color: this.mode === 'easy' ? '#1f4f7a' : '#7a2a1a' }); }
     // 걸린 시간 / 목표 시간 (별 하나)
     {
       const over = this.playTime > this.par;
