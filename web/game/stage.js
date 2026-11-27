@@ -735,7 +735,7 @@ export class StageScene {
     // 어려움 → 색이 다른, 매우 어려움 → 황금 (매우 어려움으로 깨면 색이 다른도 함께)
     if (!Array.isArray(save.shiny)) save.shiny = Array(10).fill(0);
     // 그 스테이지 정령을 구출한 상태로 깨야 색이 다른를 얻음
-    const gain = !rescuedIn(this.mode, n - 1) ? 0 : { easy: 4, hard: 1, veryhard: 3 }[this.mode] || 0, before = save.shiny[n - 1] || 0;
+    const gain = !rescuedIn(this.mode, n - 1) ? 0 : { easy: 4, hard: 1, veryhard: 2 }[this.mode] || 0, before = save.shiny[n - 1] || 0;
     this.shinyNeedsSpirit = this.mode !== 'normal' && !rescuedIn(this.mode, n - 1);
     save.shiny[n - 1] = before | gain;
     this.newShiny = gain & ~before;   // 이번에 새로 얻은 것

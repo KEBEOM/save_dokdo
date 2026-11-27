@@ -113,6 +113,13 @@ function loadSave() {
       // 난이도별 구출 기록이 없던 예전 저장: 그때까지 구한 정령은 '보통'에서 구한 것으로 옮김
       if (!data.rescuedMode) s.rescuedMode.normal = (s.rescued || []).map(Boolean);
       for (const m of ['easy', 'normal', 'hard', 'veryhard']) if (!Array.isArray(s.rescuedMode[m])) s.rescuedMode[m] = Array(10).fill(false);
+      // 예전에는 매우 어려움으로 깨면 색이 다른 정령까지 함께 줬음: 어려움에서 정령을 구한 적이 없으면 색이 다른 정령은 거둬들임 (한 번만)
+      if (!s.shinyFix1) {
+        s.shinyFix1 = true;
+        (s.shiny || []).forEach((v, i) => {
+          if ((v & 2) && (v & 1) && !s.rescuedMode.hard[i]) { s.shiny[i] = v & ~1; if (s.skin[i] === 1) s.skin[i] = 2; }
+        });
+      }
       // 화폐를 독도 포인트 하나로 통일: 예전 카드 점수(÷10)와 구출 포인트를 옮겨 담음
       if (s.hearts || s.savePts) { s.dp += Math.floor((s.hearts || 0) / 10) + (s.savePts || 0); s.hearts = 0; s.savePts = 0; }
       return s;
