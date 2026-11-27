@@ -1,7 +1,8 @@
 // 달리고 구하고 풀어라!: 스테이지 선택, 달리기(플랫폼) 게임, 파란 로봇 퀴즈
-import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp, rrect } from './core.js';
+import { W, H, ctx, img, sp, preload, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyDown, keyHit, save, persist, audio, go, game, fmt, dim, beginUI, ui, inside, clamp, rrect, font } from './core.js';
 import { nav, Notice, CardReveal, spiritSquash, soundPanel } from './widgets.js';
 import { generateLevel } from './levelgen.js';
+import { spiritImage } from './hub.js';
 
 const U = 64;                 // 1 유닛 = 64px
 const GRAV = 9.81 * 3, JUMP = 12, SPEED = 5, MAXFALL = 22;
@@ -20,6 +21,13 @@ const KING_GATE = ['여기까지 오다니 대단하다. 독도를 걸고 승부
 // 괭이갈매기 도트 그림 조각 (assets/img/gull.png): 위치·크기와 부리 끝(bx,by)·발끝(feet), 단위는 도트 한 칸
 const GULL = {"idle": [{"x": 0, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 5, "feet": 17}, {"x": 22, "y": 0, "w": 20, "h": 18, "bx": 18, "by": 4, "feet": 17}, {"x": 43, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 4, "feet": 17}], "peck": [{"x": 87, "y": 0, "w": 26, "h": 13, "bx": 19, "by": 8, "feet": 12}], "call": [{"x": 114, "y": 0, "w": 26, "h": 23, "bx": 23, "by": 8, "feet": 22}], "takeoff": [{"x": 141, "y": 0, "w": 25, "h": 17, "bx": 22, "by": 4, "feet": 16}, {"x": 167, "y": 0, "w": 24, "h": 20, "bx": 22, "by": 9, "feet": 19}], "fly": [{"x": 192, "y": 0, "w": 26, "h": 19, "bx": 24, "by": 11, "feet": 18}, {"x": 219, "y": 0, "w": 26, "h": 16, "bx": 24, "by": 8, "feet": 15}, {"x": 246, "y": 0, "w": 28, "h": 13, "bx": 25, "by": 5, "feet": 12}, {"x": 275, "y": 0, "w": 27, "h": 14, "bx": 25, "by": 5, "feet": 13}]};
 const GULL_K = 4;      // 도트 한 칸 → 화면 4px (다른 캐릭터와 같은 도트 크기)
+// 달리기 모드: 보통(머리 밟으면 기절) / 어려움(밟아도 처음 장소로) / 매우 어려움(+ 힌트·정령을 얻어도 세이브 안 됨)
+const MODES = [
+  { id: 'normal', name: '보통', desc: '로봇 머리를 밟으면 기절해요. 힌트·정령을 얻은 자리에서 다시 시작해요.' },
+  { id: 'hard', name: '어려움', desc: '로봇은 밟아도 처음 장소로! 깨면 그 스테이지의 이로치 정령을 얻어요.' },
+  { id: 'veryhard', name: '매우 어려움', desc: '어려움 + 힌트·정령을 얻어도 세이브가 안 돼요. 깨면 황금 정령을 얻어요.' },
+];
+const modeOf = id => MODES.find(m => m.id === id) || MODES[0];
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
 const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇 옆에 닿으면 처음 장소로! 머리를 밟으면 잠깐 기절한다 (안전모 로봇은 두 번 밟아라)', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '금이 간 블록은 밟으면 1초 뒤에 무너진다! 얼른 다음 블록으로 뛰어라! (조금 뒤 다시 생긴다)', '강치를 위에서 밟으면 높이 튕겨 올라간다! 높은 발판은 강치를 밟아 올라가자!', '눈 오는 날은 길이 미끄럽다! 미리 멈추고 조심조심 뛰자!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
@@ -47,14 +55,27 @@ export class StageSelectScene {
   draw() {
     beginUI(this.notice.open ? 1 : 0);
     drawCover(img('bg3'), 0, 0, W, H);
-    text('달리고 구하고 풀어라!', W / 2, 40, { size: 56, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
+    text('달리고 구하고 풀어라!', W / 2, 24, { size: 52, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
+    // 모드 고르기
+    const cur = save.mode || 'normal';
+    MODES.forEach((m, k) => {
+      const bw = k === 2 ? 190 : 150, bx = [W / 2 - 260, W / 2 - 100, W / 2 + 60][k];
+      const sel = cur === m.id;
+      if (button(m.name, bx, 94, bw, 50, { size: 24, fill: sel ? (k === 0 ? '#c8e6b0' : k === 1 ? '#f3c9a8' : '#e8a8a8') : '#cfc6b6' })) { save.mode = m.id; persist(); }
+      if (sel) { ctx.fillStyle = '#3a2f28'; ctx.fillRect(bx + 14, 148, bw - 28, 4); }
+    });
+    text(modeOf(cur).desc, W / 2, 158, { size: 20, align: 'center', color: '#fff', stroke: 'rgba(0,0,0,.7)', strokeW: 5 });
     for (let i = 0; i < 10; i++) {
-      const x = 150 + (i % 5) * 205, y = 160 + Math.floor(i / 5) * 250;
+      const x = 150 + (i % 5) * 205, y = 196 + Math.floor(i / 5) * 230;
       const open = i + 1 <= save.unlockedStage;
       const bob = open ? Math.sin(this.t * 2 + i) * 4 : 0;
       drawFit(img(save.cleared[i] ? 'stagemark' + (i + 1) : 'selecticon'), x, y + bob, 160, 160, open ? {} : { shade: '#2b2b2b', shadeAlpha: 0.55 });
       if (!open) drawFit(img('Lock'), x + 50, y + 50, 60, 60);
       if (save.rescued[i]) drawFit(img('water_icon'), x + 116, y - 10, 52, 52, { frame: [0, 0, 160, 160] });
+      // 얻은 이로치 정령 표시 (분홍 = 이로치, 노랑 = 황금)
+      const sh = (save.shiny || [])[i] || 0;
+      if (sh & 1) text('★', x + 14, y - 6, { size: 26, color: '#ff9ad8', stroke: '#3a2f28', strokeW: 4 });
+      if (sh & 2) text('★', x + 40, y - 6, { size: 26, color: '#ffd23f', stroke: '#3a2f28', strokeW: 4 });
       if (save.cleared[i]) { const st = (save.stars || [])[i] || 0; for (let k = 0; k < 3; k++) text('★', x + 80 + (k - 1) * 34, y + 128, { size: 34, align: 'center', color: k < st ? '#ffcc33' : '#cfc4b3', stroke: '#3a2f28', strokeW: 5 }); }
       panel(x + 20, y + 168, 120, 46, { r: 8, inner: false, lw: 3 });
       text(`스테이지${i + 1}`, x + 80, y + 176, { size: 24, align: 'center' });
@@ -74,6 +95,7 @@ export class StageSelectScene {
 export class StageScene {
   constructor(n) {
     this.n = n;
+    this.mode = save.mode || 'normal';
     const orig = game.data.stages[n - 1];
     const d = { ...orig, ...generateLevel(orig, n) };   // 들어갈 때마다 새로 만드는 랜덤 맵
     this.d = d;
@@ -103,6 +125,7 @@ export class StageScene {
     // 별 3개: 목표 시간 안에 / 독도 포인트 모두 / 로봇에게 한 번도 안 잡히기
     this.playTime = 0; this.robotHits = 0;
     this.par = Math.max(60, Math.round((30 + 1.0 * (this.bounds.r - this.bounds.l)) / 10) * 10);
+    if (this.mode !== 'normal') d.robots.forEach(r => { r.hat = false; });   // 어려움 모드는 밟기가 없으니 안전모도 없음
     this.robots = d.robots.map((r, i) => ({ ...r, i, sx0: r.x, sy0: r.y, vx: r.walk ? (r.flip ? 1 : -1) * (r.speed || 1) : 0, vy: 0, t: Math.random() * 3, jt: 0.5 + Math.random() * 1.5, solved: false, tt: 1.5 + Math.random() * 2 }));
     this.stones = [];
     this.look = 0;     // 아래 내려다보기 (0~1)
@@ -214,6 +237,7 @@ export class StageScene {
     const lookDown = keyDown('ArrowDown', 'KeyS') || this.touch.down;
     this.look += ((lookDown ? 1 : 0) - this.look) * Math.min(1, dt * (lookDown ? 3 : 6));
     p.vx = (right ? 1 : 0) - (left ? 1 : 0);
+    p.move = p.vx;   // 지금 누르고 있는 방향 (걷는 모습은 이때만)
     if (p.vx) p.face = p.vx;
     p.vx *= SPEED;
     // 눈 오는 날: 길이 미끄러워서 천천히 빨라지고, 손을 떼도 한참 미끄러짐
@@ -324,9 +348,10 @@ export class StageScene {
       if (rb.appear > 0) { rb.appear -= dt; continue; }
       if (rb.solved) continue;
       // 위에서 머리를 밟으면 기절 (문제 로봇은 빼고)
-      if (!rb.q && !p.riding && this.stompHit(rb)) { this.stomp(rb); continue; }
+      const stomped = !rb.q && !p.riding && this.stompHit(rb);
+      if (stomped && this.mode === 'normal') { this.stomp(rb); continue; }
       const dx = rb.x - p.x, dy = rb.y - (p.y - 0.08);
-      if (dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2 && p.blink <= 0) {
+      if ((stomped || dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2) && p.blink <= 0) {   // 어려움 모드는 밟아도 닿은 것과 같음
         if (rb.q) { if (!rb.busy) this.openRobotQuiz(rb); return; }
         if (p.shields.length) {
           // 보호막이 대신 막아 줌: 보호막만 깨지고 살짝 튕겨 나감
@@ -369,7 +394,7 @@ export class StageScene {
     }
     // 열쇠
     for (const k of this.keys) {
-      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.setCheckpoint(k.x, k.y - 0.25); audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
+      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.setCheckpoint(k.x, k.y - 0.25); audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: this.mode !== 'veryhard' }; }
     }
     // 정령
     const s = this.spirit;
@@ -514,6 +539,7 @@ export class StageScene {
   }
   // 체크포인트(힌트·정령을 얻은 자리): 그 아래 바닥 위에서 다시 시작하고, 바닥에 빛나는 표시
   setCheckpoint(x, y) {
+    if (this.mode === 'veryhard') return;   // 매우 어려움: 힌트·정령을 얻어도 세이브 안 됨
     let best = null;
     for (const s of this.solids) {
       if (s.off || s.crumble) continue;
@@ -554,7 +580,7 @@ export class StageScene {
     g.state = 'fly'; g.from = from; g.to = to; g.t = 0; g.rider = rider;
     g.T = 1.3 + Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]) * 0.12;
     const sp = this.near(g.x, g.y, 12); if (rider || sp.vol > 0.1) audio.sfx('gull', rider ? {} : sp);
-    if (rider) { const p = this.p; p.riding = g; p.vx = p.vy = 0; p.kb = 0; g.off0 = [p.x - g.x, p.y - g.y]; }
+    if (rider) { const p = this.p; p.riding = g; p.vx = p.vy = 0; p.kb = 0; p.move = 0; g.off0 = [p.x - g.x, p.y - g.y]; }
   }
   updateGulls(dt) {
     const p = this.p;
@@ -657,6 +683,13 @@ export class StageScene {
     this.newRecord = !prev || this.playTime < prev;
     this.prevBest = prev;
     if (this.newRecord) save.bestTime[n - 1] = this.playTime;
+    // 어려움 → 이로치, 매우 어려움 → 황금 (매우 어려움으로 깨면 이로치도 함께)
+    if (!Array.isArray(save.shiny)) save.shiny = Array(10).fill(0);
+    // 그 스테이지 정령을 구출한 상태로 깨야 이로치를 얻음
+    const gain = !save.rescued[n - 1] ? 0 : this.mode === 'hard' ? 1 : this.mode === 'veryhard' ? 3 : 0, before = save.shiny[n - 1] || 0;
+    this.shinyNeedsSpirit = this.mode !== 'normal' && !save.rescued[n - 1];
+    save.shiny[n - 1] = before | gain;
+    this.newShiny = gain & ~before;   // 이번에 새로 얻은 것
   }
   openRobotQuiz(rb) {
     // 밀어내지 않고 그 자리에 세워 둠 (발판 끝에서 밀려 떨어지지 않게). 맞힌 로봇은 다시 문제를 내지 않음
@@ -801,7 +834,7 @@ export class StageScene {
     if (!(p.blink > 0 && Math.floor(p.blink * 10) % 2)) {
       let sheet = 'boy_stand', fr = Math.floor(p.anim * 6) % 9;
       if (!p.ground) { sheet = 'boy_jump'; fr = p.vy > 2 ? 1 : p.vy > -2 ? 2 : 3; }
-      else if (Math.abs(p.vx) > 0.1) { sheet = 'boy_walk'; fr = Math.floor(p.anim * 10) % 4; }
+      else if (p.move && Math.abs(p.vx) > 0.1) { sheet = 'boy_walk'; fr = Math.floor(p.anim * 10) % 4; }   // 미끄러질 때(방향키 안 누름)는 서 있는 모습
       const shake = p.kb > 0 ? Math.sin(this.t * 60) * 0.04 : 0;
       this.drawSheet(sheet, [fr * 80, 0, 80, 80], p.x + shake, p.y, 0.8 * 1.25, p.face < 0);
     }
@@ -824,6 +857,7 @@ export class StageScene {
     const tint = { dusk: 'rgba(60,50,120,.18)', night: 'rgba(20,25,70,.28)', sunset: 'rgba(255,140,90,.10)' }[this.bgName.replace('runbg_', '')];
     if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H); }
     this.drawWeather();
+    if (this.n === 10) this.drawDark();
     if (!this.ready) {
       ctx.fillStyle = 'rgba(27,43,54,.85)'; ctx.fillRect(0, 0, W, H);
       text(`스테이지${this.n}`, W / 2, H / 2 - 70, { size: 60, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 10 });
@@ -918,6 +952,29 @@ export class StageScene {
         text('매달리기!', gx - 0.56 * g.dir * U, gy - 50 + Math.sin(this.t * 5) * 3, { size: 22, align: 'center', color: '#fff', stroke: '#2b2b2b', strokeW: 5 });
       }
     }
+  }
+  // 10스테이지(로보킹 성으로 가는 밤): 캄캄한 밤, 주인공 둘레만 손전등처럼 밝고 열쇠·정령·문은 희미하게 빛남
+  drawDark() {
+    if (!this.darkCv) { this.darkCv = document.createElement('canvas'); this.darkCv.width = W; this.darkCv.height = H; }
+    const c = this.darkCv, g = c.getContext('2d');
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H);
+    g.fillStyle = 'rgba(4,6,18,0.93)'; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    const hole = (wx, wy, r, a = 1) => {
+      const [x, y] = this.w2s(wx, wy);
+      if (x < -r || x > W + r || y < -r || y > H + r) return;
+      const gr = g.createRadialGradient(x, y, r * 0.35, x, y, r);
+      gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    };
+    const flick = 1 + Math.sin(this.t * 9) * 0.015 + Math.sin(this.t * 23) * 0.01;   // 손전등이 살짝 떨림
+    hole(this.p.x + this.p.face * 0.4, this.p.y + 0.2, U * 3.4 * flick);
+    for (const k of this.keys) if (!k.got) hole(k.x, k.y, U * 0.9, 0.8);
+    if (this.spirit && !this.spirit.got) hole(this.spirit.x, this.spirit.y + 0.4, U * 1.1, 0.8);
+    if (this.door) hole(this.door.x, this.door.y + 0.6, U * 1.6, 0.85);
+    if (this.cp) hole(this.cp.x, this.cp.y + 0.4, U * 0.9, 0.7);
+    for (const sl of this.seals) hole(sl.x, sl.y + 0.4, U * 0.8, 0.5);
+    ctx.drawImage(c, 0, 0);
   }
   // 눈 오는 날: 발판 위에 눈이 점점 쌓임 (도트 느낌으로 4px 단위)
   drawSnowCap(x0, top, w) {
@@ -1028,6 +1085,8 @@ export class StageScene {
       ctx.fillStyle = 'rgba(140,220,255,.5)'; ctx.fill();
       if (this.p.shields.length > 1) text('×' + this.p.shields.length, hx + 29, hy + 15, { size: 24, align: 'center', color: '#1f5f8f', stroke: '#fff', strokeW: 4 });
     }
+    // 모드 표시 (보통이 아닐 때)
+    if (this.mode !== 'normal') { panel(394, 68, 130, 40, { r: 8, inner: false, lw: 3, fill: this.mode === 'hard' ? '#f3c9a8' : '#e8a8a8' }); text(modeOf(this.mode).name, 459, 76, { size: 20, align: 'center', color: '#7a2a1a' }); }
     // 걸린 시간 / 목표 시간 (별 하나)
     {
       const over = this.playTime > this.par;
@@ -1100,7 +1159,7 @@ export class StageScene {
       // 위: 제목, 가운데: 그림, 아래: 정령의 말 + 확인
       panel(140, 34, W - 280, 652, { fill: '#2d3a45' });
       text(`${game.data.hub.spiritNames[this.n - 1]}을(를) 구출했다!`, W / 2, 50, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
-      if (!m.replay) text('독도 포인트 +10  |  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
+      if (!m.replay) text(this.mode === 'veryhard' ? '독도 포인트 +10  |  매우 어려움: 세이브는 안 돼요' : '독도 포인트 +10  |  ★ 이제 떨어지면 이 자리에서 다시 시작해요', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
       else text('구출 장면 다시 보기', W / 2, 94, { size: 24, align: 'center', color: '#fff' });
       if (bg) drawFit(bg, 170, 134, W - 340, 430);
       panel(200, 584, W - 590, 76, {});
@@ -1112,7 +1171,8 @@ export class StageScene {
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
       const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['stun'], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['crumble'], ['seal'], ['snow'], ['daddy_small', [0, 0, 82, 82]]];
-      GUIDE.forEach((g, k) => {
+      GUIDE.forEach((g0, k) => {
+        const g = k === 5 && this.mode !== 'normal' ? `${modeOf(this.mode).name} 모드: 로봇에게 닿으면 머리를 밟아도 처음 장소로!${this.mode === 'veryhard' ? ' 힌트·정령을 얻어도 세이브 안 됨!' : ''}` : g0;
         const y = 106 + k * 36;
         ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 34);
         const [n, fr] = icons[k] || [];
@@ -1157,10 +1217,18 @@ export class StageScene {
         text(labels[k][1], cx, 322, { size: 20, align: 'center', color: got[k] ? '#3d7a2a' : '#9a6a3a' });
       }
       const cnt = got.filter(Boolean).length;
-      if (el > 1.5 && this.newRecord) text(this.prevBest ? `새 최고 기록! (전: ${fmtTime(this.prevBest)})` : '첫 기록!', W / 2 - 230, 348, { size: 18, align: 'center', color: '#c0392b' });
-      if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 378, { size: 24, align: 'center', color: '#7a3b12' });
-      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 412, 660, 54, { size: 26 });
-      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 470, 660, 40, { size: 22, color: '#5a4a3a' });
+      if (el > 1.5 && this.newRecord) text(this.prevBest ? `새 최고 기록! (전: ${fmtTime(this.prevBest)})` : '첫 기록!', W / 2 - 230, 346, { size: 18, align: 'center', color: '#c0392b' });
+      if (el > 1.8 && this.newShiny) {
+        // 새로 얻은 이로치 정령: 그림 + 한 줄 (가운데 정렬, 그림은 글 왼쪽)
+        const sk = this.newShiny & 2 ? 2 : 1, s2 = spiritImage(this.n - 1, sk);
+        const msg = `${sk === 2 ? '황금' : '이로치'} ${game.data.hub.spiritNames[this.n - 1]}을(를) 얻었다!`;
+        ctx.font = font(24); const tw = ctx.measureText(msg).width, x0 = W / 2 - (tw + 60) / 2;
+        drawImg(s2.im, x0, 368, 50, 50, { frame: s2.frame });
+        text(msg, x0 + 60, 380, { size: 24, color: sk === 2 ? '#a06a00' : '#c0408a' });
+      } else if (el > 1.8 && this.shinyNeedsSpirit) text('정령을 구출하고 깨야 이로치 정령을 얻어요!', W / 2, 378, { size: 24, align: 'center', color: '#c0408a' });
+      else if (el > 1.8) text(cnt === 3 ? '별 3개! 완벽해요!' : (this.starBest > cnt ? `최고 기록은 별 ${this.starBest}개예요.` : '다시 도전해서 별을 모아 봐요!'), W / 2, 378, { size: 24, align: 'center', color: '#7a3b12' });
+      textBox(save.rescued[this.n - 1] ? `${game.data.hub.spiritNames[this.n - 1]}도 구했어요!` : '이 스테이지의 정령을 아직 못 구했어요. 다시 와서 구해 주세요!', W / 2 - 330, 424, 660, 46, { size: 26 });
+      textBox(`독도 석상에서 ${this.n}번 정령 퍼즐을 열 수 있어요!`, W / 2 - 330, 474, 660, 40, { size: 22, color: '#5a4a3a' });
       if (this.n < 10 && button('다음 스테이지', W / 2 - 300, 540, 280, 76, { layer: L, size: 30 })) go(nav.stage(this.n + 1));
       if (button('스테이지 메뉴', W / 2 + 20, 540, 280, 76, { layer: L, size: 30 })) go(nav.stageSelect());
     } else if (m.type === 'notpass') {

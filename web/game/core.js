@@ -96,6 +96,9 @@ export function defaultSave() {
     easter: 0, finalCleared: false, lastCardScore: 0,
     stars: Array(10).fill(0),            // 스테이지마다 받은 별 (가장 많이 받은 개수)
     bestTime: Array(10).fill(0),         // 스테이지마다 가장 빨리 깬 시간(초), 0이면 아직 없음
+    mode: 'normal',                      // 달리기 모드: normal(보통) · hard(어려움) · veryhard(매우 어려움)
+    shiny: Array(10).fill(0),            // 이로치 정령: 1 = 어려움으로 깸(이로치), 2 = 매우 어려움으로 깸(황금)
+    skin: Array(10).fill(0),             // 마을에 데려온 정령 모습: 0 보통, 1 이로치, 2 황금
     tips: {},                            // 한 번만 보여 주는 안내
   };
 }
@@ -172,6 +175,36 @@ function shaded(im, frame, color) {
     g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, fw, fh);
     shadeCache.set(key, c);
   }
+  return c;
+}
+// 이로치 정령 그림: 1 = 다른 색(색상 돌리기), 2 = 황금빛. 테두리(아주 어두운 색)는 그대로 둠
+const skinCache = new Map();
+export function skinned(im, frame, skin) {
+  if (!skin || !im || !im.complete || !im.naturalWidth) return null;
+  const key = im.src + '|' + frame.join(',') + '|' + skin;
+  if (skinCache.has(key)) return skinCache.get(key);
+  const c = document.createElement('canvas'); c.width = frame[2]; c.height = frame[3];
+  const g = c.getContext('2d'); g.drawImage(im, frame[0], frame[1], frame[2], frame[3], 0, 0, frame[2], frame[3]);
+  const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  for (let i = 0; i < a.length; i += 4) {
+    if (!a[i + 3]) continue;
+    let r = a[i] / 255, gg = a[i + 1] / 255, b = a[i + 2] / 255;
+    const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2;
+    if (l < 0.2) continue;   // 테두리
+    let h = 0, s2 = 0;
+    if (mx !== mn) {
+      const dd = mx - mn; s2 = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+      h = mx === r ? (gg - b) / dd + (gg < b ? 6 : 0) : mx === gg ? (b - r) / dd + 2 : (r - gg) / dd + 4; h /= 6;
+    }
+    if (skin === 1) { if (s2 < 0.15) { h = 0.83; s2 = 0.35; } else { h = (h + 0.42) % 1; s2 = Math.min(1, s2 * 1.1); } }
+    else { h = 0.12; s2 = 0.85; }   // 황금
+    const ll = skin === 2 ? Math.min(0.92, 0.25 + l * 0.75) : l;
+    const q = ll < 0.5 ? ll * (1 + s2) : ll + s2 - ll * s2, pp = 2 * ll - q;
+    const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? pp + (q - pp) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? pp + (q - pp) * (2 / 3 - t) * 6 : pp; };
+    a[i] = Math.round(f(h + 1 / 3) * 255); a[i + 1] = Math.round(f(h) * 255); a[i + 2] = Math.round(f(h - 1 / 3) * 255);
+  }
+  g.putImageData(d, 0, 0);
+  skinCache.set(key, c);
   return c;
 }
 export function drawImg(im, x, y, w, h, opts = {}) {

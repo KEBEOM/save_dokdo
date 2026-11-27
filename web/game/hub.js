@@ -1,5 +1,5 @@
 // 시작 화면, 독도 마을(허브), 게임 선택 화면
-import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font } from './core.js';
+import { W, H, ctx, img, sp, drawCover, drawFit, drawImg, panel, text, textBox, button, hit, input, keyHit, save, persist, resetSave, audio, game, go, fmt, dim, beginUI, ui, inside, font, skinned } from './core.js';
 import { nav, drawPoints, Notice, Reader, iconButton, CardReveal, cardPicName, spiritSquash, soundPanel, creditsPanel } from './widgets.js';
 
 export const SPIRIT_TITLES = ['독도의 높이', '화산섬이 생긴 순서', '독도와 울릉도의 거리', '독도의 보물', '독도의 여러 이름', '옛 이름이 나오는 기록', '옛 지도 속 독도', '고려 시대 기록', '조선 시대 기록', '독도와 일본'];
@@ -36,9 +36,13 @@ function randomSpot() {
   }
   return { x: 640, y: 600 };
 }
-export function spiritImage(i) {
-  return i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
+export function spiritImage(i, skin = 0) {
+  const base = i === 0 ? { im: img('water_mob'), frame: [0, 0, 160, 160] } : { im: img('spirits'), frame: [SPIRIT_FRAMES[i] * 160, 0, 160, 160] };
+  if (!skin) return base;
+  const c = skinned(base.im, base.frame, skin);   // 이로치(1)·황금(2) 정령
+  return c ? { im: c, frame: [0, 0, 160, 160] } : base;
 }
+export const SKIN_NAMES = ['보통', '이로치', '황금'];
 
 // ================================================================ 시작 화면
 export class TitleScene {
@@ -155,12 +159,17 @@ export class HubScene {
   }
   // 정령 하나 그리기 (발바닥 기준으로 늘였다 줄였다, 누르면 말하기)
   drawWalker(w) {
-    const s = spiritImage(w.i);
+    const skin = (save.skin || [])[w.i] || 0;
+    const s = spiritImage(w.i, skin);
     // 원작처럼 몸을 늘였다 줄였다 (발바닥 기준)
     const [sx, sy] = w.held ? [1.08, 1.08] : spiritSquash(this.t + w.i * 0.37, !!(w.vx || w.vy), w.touch || 0);
     const lift = w.held ? 18 : 0;
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(w.x, w.y + 40, 30 * sx, 8, 0, 0, Math.PI * 2); ctx.fill();
     drawImg(s.im, w.x - 45 * sx, w.y + 40 - 90 * sy - lift, 90 * sx, 90 * sy, { frame: s.frame, flip: w.flip });
+    if (skin) {   // 이로치 정령은 반짝반짝
+      ctx.fillStyle = skin === 2 ? '#ffe066' : '#ffd6f5';
+      for (let k = 0; k < 3; k++) { const ph = this.t * 1.3 + k * 2.1 + w.i; const tw = (Math.sin(ph * 3) + 1) / 2; if (tw < 0.4) continue; const r = 3 + tw * 3; const px = Math.round(w.x + Math.cos(ph) * 40), py = Math.round(w.y - 10 + Math.sin(ph * 1.3) * 34 - lift); ctx.fillRect(px - r, py - 1, r * 2, 2); ctx.fillRect(px - 1, py - r, 2, r * 2); }
+    }
     // 석상 뒤에 가려진 부분을 누르면 석상이 열리도록, 정령은 보이는 곳만 눌림
     const behind = w.y + 40 < STATUE_FEET && inside(input.clickX, input.clickY, 559, 70, 158, 374);
     if (!this.dropped && !w.held && !behind && hit(w.x - 45, w.y - 50, 90, 90, 0)) this.talk(w);
@@ -336,7 +345,7 @@ export class HubScene {
     panel(240, 30, 800, H - 60);
     text('정령 구출', 640, 46, { size: 40, align: 'center', color: '#7a3b12' });
     const shown = save.shown[i];
-    const s = spiritImage(i);
+    const s = spiritImage(i, shown ? (save.skin[i] || 0) : 0);
     panel(440, 100, 400, 280, { fill: '#2d3a45', inner: false });
     ctx.save();
     { const [qx, qy] = spiritSquash(this.t, false); const bw = 260 * qx, bh = 260 * qy; drawImg(s.im, 640 - bw / 2, 370 - bh, bw, bh, { frame: s.frame, shade: shown ? null : '#000' }); }
@@ -346,8 +355,19 @@ export class HubScene {
     text(d.spiritNames[i], 640, 392, { size: 36, align: 'center' });
     text(save.rescued[i] ? `${i + 1}스테이지에서 구출한 정령이에요` : `${i + 1}스테이지에 숨어 있는 정령이에요`, 640, 436, { size: 22, align: 'center', color: '#5a4a3a' });
     if (shown) {
-      panel(490, 484, 300, 70, { fill: '#c8e6b0' });
-      text('구출 성공!', 640, 502, { size: 32, align: 'center' });
+      // 마을에서 보일 모습 고르기: 보통 / 이로치(어려움으로 깸) / 황금(매우 어려움으로 깸)
+      text('구출 성공!', 460, 108, { size: 22, color: '#a8e08a' });
+      for (let k = 0; k < 3; k++) {
+        const bx = 452 + k * 128, by = 470, have = k === 0 || ((save.shiny[i] || 0) & k) !== 0, sel = (save.skin[i] || 0) === k;
+        panel(bx, by, 120, 92, { r: 10, inner: false, lw: sel ? 5 : 3, fill: sel ? '#fff2c0' : have ? '#f4e3c3' : '#cfc6b6', line: sel ? '#c0702a' : '#3a2f28' });
+        const sk = spiritImage(i, k);
+        drawImg(sk.im, bx + 30, by + 4, 60, 60, { frame: sk.frame, shade: have ? null : '#000' });
+        text(SKIN_NAMES[k], bx + 60, by + 64, { size: 20, align: 'center', color: have ? '#3a2f28' : '#6d665c' });
+        if (hit(bx, by, 120, 92, L)) {
+          if (have) { save.skin[i] = k; persist(); audio.sfx('click'); }
+          else this.notice.push(`${i + 1}스테이지를 '${k === 1 ? '어려움' : '매우 어려움'}' 모드로 깨면\n${k === 1 ? '이로치(다른 색)' : '황금'} ${d.spiritNames[i]}을(를) 얻어요!\n(스테이지 메뉴 위에서 모드를 고를 수 있어요)`, { title: `${SKIN_NAMES[k]} 정령` });
+        }
+      }
     } else {
       const c1 = spiritShowCost(i);
       if (!save.rescued[i] || !save.cleared[i]) {
