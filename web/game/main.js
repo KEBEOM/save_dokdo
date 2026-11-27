@@ -24,6 +24,7 @@ Object.assign(nav, {
   beforeFinal: () => new StoryScene(BEFORE_FINAL, { music: 'daddy_theme', skip: false, onDone: c => go(c === 1 ? nav.final() : nav.hub()) }),
   final: () => new FinalBattleScene(),
   ending: () => new StoryScene(ENDING, { music: 'roboking_defeat', onDone: () => go(nav.title()) }),
+  endingReplay: () => new StoryScene(ENDING, { music: 'roboking_defeat', onDone: () => go(nav.hub()) }),   // 석상에서 엔딩 다시 보기 → 끝나면 마을로
 });
 
 // 시험·문제 확인용 (브라우저 개발자 도구에서 사용)
