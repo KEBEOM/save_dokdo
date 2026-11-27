@@ -7,6 +7,7 @@ const U = 64;                 // 1 유닛 = 64px
 const GRAV = 9.81 * 3, JUMP = 12, SPEED = 5, MAXFALL = 22;
 const PW = 0.5, PH = 0.62;    // 주인공 충돌 상자 (원래 게임: 반지름 0.3 원)
 const ROBOT_R = 0.38;
+const SEAL_BOUNCE = 22.5;   // 강치를 밟으면 튀어 오르는 힘 (약 8.6칸)
 const SHIELD_MAX = 2;          // 보호막은 최대 2겹
 
 // 9스테이지 로보킹 문제: 원래 게임 연결에서는 '시마네현 고시'가 정답으로 되어 있었지만,
@@ -21,7 +22,7 @@ const GULL = {"idle": [{"x": 0, "y": 0, "w": 21, "h": 18, "bx": 19, "by": 5, "fe
 const GULL_K = 4;      // 도트 한 칸 → 화면 4px (다른 캐릭터와 같은 도트 크기)
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const NOT_PASS = '자네에게 정령들의 기운이 충분히 느껴지지 않는군..\n정령들을 모두 구출하고 도전하는것이 좋다네...\n다른 스테이지에 두고온 정령들을 살펴보고 오게나..';
-const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇에게 닿으면 처음 장소로 돌아오니 주의해라!', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '금이 간 블록은 밟으면 1초 뒤에 무너진다! 얼른 다음 블록으로 뛰어라! (조금 뒤 다시 생긴다)', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
+const GUIDE = ['점프 버튼을 공중에서 한 번 더 누르면 더블 점프! 높은 발판도 올라갈 수 있다!', '노란 테두리 발판은 움직인다! 올라타서 높은 곳이나 먼 곳으로 건너가자!', '열쇠를 획득해라! 열쇠를 얻으면 스테이지 해결에 필요한 힌트도 제공한다! 획득한 열쇠를 클릭하면 획득한 힌트를 다시 볼 수 있다!', '섬 곳곳에 숨어있는 정령들을 구출해라!', '파란로봇 중에는 문제를 내는 녀석들도 있다!!', '로봇 옆에 닿으면 처음 장소로! 머리를 밟으면 잠깐 기절한다 (안전모 로봇은 두 번 밟아라)', '초록 로봇(머리 위에 종이 뭉치)은 종이 뭉치를 던진다! 맞으면 뒤로 튕겨 나가고, 몸에 닿으면 처음 장소로!', '갈색 로봇(머리 위에 종이비행기)은 종이비행기를 던진다! 맞으면 보호막이 생겨(최대 2겹) 로봇에 한 번 닿아도 괜찮다!', '아래 방향키(↓)나 ▼ 버튼을 누르고 있으면 아래쪽을 내려다볼 수 있다!', '넓은 바다 앞 괭이갈매기 쪽으로 걸어가면 발에 매달려 건너간다! 돌아올 때도 태워 준다!', '금이 간 블록은 밟으면 1초 뒤에 무너진다! 얼른 다음 블록으로 뛰어라! (조금 뒤 다시 생긴다)', '강치를 위에서 밟으면 높이 튕겨 올라간다! 높은 발판은 강치를 밟아 올라가자!', '눈 오는 날은 길이 미끄럽다! 미리 멈추고 조심조심 뛰자!', '나를 찾아와 문제를 풀고 다음 스테이지로 넘어가라!'];
 
 // 0..n-1을 무작위 순서로
 function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -96,6 +97,8 @@ export class StageScene {
     this.coins = d.coins.map(([x, y], i) => ({ x, y, i, got: false }));
     this.keys = d.keys.map(k => ({ ...k, got: false }));
     // 괭이갈매기 (a쪽·b쪽 사이를 오가며 태워 줌)
+    this.seals = (d.seals || []).map(sl => ({ ...sl, anim: -1 }));
+    this.hats = [];          // 밟혀서 날아가는 안전모
     this.gulls = (d.gulls || []).map(g => ({ ...g, side: 'a', x: g.a[0], y: g.a[1], state: 'wait', t: 0, ready: true, fl: Math.random() * 6, dir: 1 }));
     // 별 3개: 목표 시간 안에 / 독도 포인트 모두 / 로봇에게 한 번도 안 잡히기
     this.playTime = 0; this.robotHits = 0;
@@ -141,7 +144,7 @@ export class StageScene {
     for (const o of [d.door, d.flag, d.spirit, ...d.deco]) if (o?.s) keys.add(o.s);
     if (d.saveBg) keys.add(d.saveBg);
     this.ready = false;
-    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', this.bgName])).then(() => { this.ready = true; });
+    preload([...keys].map(k => 'sp/' + k).concat(['boy_stand', 'boy_walk', 'boy_jump', 'robo_red', 'robo_green', 'robo_brown', 'robo_blue', 'roboking', 'dokdo_icon', 'daddy_small', 'dp', 'gull', 'seal', 'hardhat', 'robo_red_stun', 'robo_blue_stun', 'robo_green_stun', 'robo_brown_stun', this.bgName])).then(() => { this.ready = true; });
   }
   enter() {
     audio.play(this.n >= 9 ? 'child_adventure' : this.n >= 7 ? 'daddy_reveal' : this.n >= 4 ? 'robot_attack' : 'protect_dokdo');
@@ -213,6 +216,12 @@ export class StageScene {
     p.vx = (right ? 1 : 0) - (left ? 1 : 0);
     if (p.vx) p.face = p.vx;
     p.vx *= SPEED;
+    // 눈 오는 날: 길이 미끄러워서 천천히 빨라지고, 손을 떼도 한참 미끄러짐
+    if (this.weather === 'snow') {
+      const want = p.vx, acc = p.ground ? (want ? 5 : 1.2) : 7;
+      p.svx = (p.svx ?? 0) + (want - (p.svx ?? 0)) * Math.min(1, dt * acc);
+      p.vx = p.svx;
+    }
     // 종이 뭉치에 맞으면 잠깐 뒤로 밀려남 (그동안은 조작이 약하게만 먹힘)
     if (p.kb > 0) { const f = p.kb / 0.4; p.vx = p.kbv * f + p.vx * (1 - f) * 0.5; p.kb -= dt; }
     if (p.paperSafe > 0) p.paperSafe -= dt;
@@ -227,6 +236,7 @@ export class StageScene {
     p.ground = r.landed;
     if (r.landed || r.bumped) p.vy = 0;
     if (p.ground) { p.coyote = 0.1; p.airJumps = 1; p.lastGround = p.y; }
+    if (r.hitX) p.svx = 0;   // 벽에 부딪히면 미끄러지던 것도 멈춤
     if (r.hitX && r.hitX.door) this.touchDoor();
     p.x = clamp(p.x, this.bounds.l, this.bounds.r);
     p.anim += dt;
@@ -247,6 +257,9 @@ export class StageScene {
     }   // (갈매기에 매달려 있지 않을 때만 걷기·점프)
 
     this.updateCrumbles(dt);
+    this.updateSeals(dt);
+    for (const h of this.hats) { h.t += dt; h.vy -= GRAV * 0.6 * dt; h.x += h.vx * dt; h.y += h.vy * dt; h.rot += h.vx * dt * 2; }
+    this.hats = this.hats.filter(h => h.t < 1.2);
     // 로봇
     for (const rb of this.robots) {
       rb.t += dt;
@@ -254,6 +267,12 @@ export class StageScene {
       const box = o => ({ x: o.x - ROBOT_R, y: o.y - ROBOT_R, w: ROBOT_R * 2, h: ROBOT_R * 2 });
       const res = this.moveBody(rb, rb.vx * dt, rb.vy * dt, box, this.solids);
       if (res.landed || res.bumped) rb.vy = 0;
+      // 머리를 밟혀 기절한 로봇: 별이 빙글빙글, 닿아도 괜찮고 다시 밟으면 통 튀어 오름
+      if (rb.stun > 0) {
+        rb.stun -= dt; rb.stunT += dt; rb.vx = 0; rb.wind = 0;
+        if (rb.stun > 0) { if (!p.riding && this.stompHit(rb)) { p.vy = JUMP * 0.9; p.airJumps = 1; audio.sfx('boing', { vol: 0.5 }); } continue; }
+        rb.stun = 0; rb.vx = rb.walk ? (rb.stunVx || (rb.flip ? 1 : -1) * (rb.speed || 1)) : 0;   // 깨어나서 다시 걸음
+      }
       // 파란 로봇은 가끔 폴짝 뛰어오름 (스테이지가 오를수록 자주, 높이)
       if (rb.blue && !rb.solved && res.landed) {
         rb.jt -= dt;
@@ -292,7 +311,7 @@ export class StageScene {
         } else {
           rb.tt -= dt;
           if (rb.tt <= 0 && Math.abs(dx) < 11 && Math.abs(dy) < 7 && p.blink <= 0) {
-            rb.wind = 0.45; rb.saveVx = rb.vx || rb.saveVx; rb.vx = 0; rb.tt = Math.max(1.1, 2.6 - 0.12 * this.n) + Math.random() * 1.2;
+            rb.wind = 0.45; rb.saveVx = rb.vx || rb.saveVx; rb.vx = 0; rb.tt = Math.max(0.9, 2.2 - 0.12 * this.n) + Math.random() * 1.0;
           }
         }
       }
@@ -304,6 +323,8 @@ export class StageScene {
       if (rb.y < this.bounds.b - 3 || this.collide(box(rb), this.deadly)) { rb.x = rb.sx0; rb.y = rb.sy0; rb.vy = 0; rb.appear = 0.8; }
       if (rb.appear > 0) { rb.appear -= dt; continue; }
       if (rb.solved) continue;
+      // 위에서 머리를 밟으면 기절 (문제 로봇은 빼고)
+      if (!rb.q && !p.riding && this.stompHit(rb)) { this.stomp(rb); continue; }
       const dx = rb.x - p.x, dy = rb.y - (p.y - 0.08);
       if (dx * dx + dy * dy < (ROBOT_R + 0.32) ** 2 && p.blink <= 0) {
         if (rb.q) { if (!rb.busy) this.openRobotQuiz(rb); return; }
@@ -348,7 +369,7 @@ export class StageScene {
     }
     // 열쇠
     for (const k of this.keys) {
-      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.start = [k.x, k.y - 0.25]; audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
+      if (!k.got && Math.abs(k.x - p.x) < 0.7 && Math.abs(k.y - (p.y - 0.08)) < 0.8) { k.got = true; this.setCheckpoint(k.x, k.y - 0.25); audio.sfx('key'); this.modal = { type: 'key', n: k.n, checkpoint: true }; }
     }
     // 정령
     const s = this.spirit;
@@ -356,7 +377,7 @@ export class StageScene {
       const info = spriteInfo(s.s); const half = info ? Math.max(info.w * Math.abs(s.sx), 0.8) / 2 : 0.6;
       if (Math.abs(s.x - p.x) < half + 0.2 && Math.abs(s.y - p.y) < half + 0.3) {
         s.got = true; save.rescued[this.n - 1] = true; save.dp += 10; persist();
-        this.start = [s.x, s.y - 0.15];   // 정령을 구한 자리도 체크포인트 (떨어지면 여기서 다시 시작)
+        this.setCheckpoint(s.x, s.y - 0.15);   // 정령을 구한 자리도 체크포인트 (떨어지면 여기서 다시 시작)
         audio.sfx('good'); this.modal = { type: 'save' };
       }
     }
@@ -460,6 +481,48 @@ export class StageScene {
     this.stones.push({ x: sx, y: sy, vx: dx / T, vy: (dy + 0.5 * g * T * T) / T, t: 0, rot: 0 });
     audio.sfx('throw', this.near(rb.x, rb.y));
   }
+  // ---------------------------------------------------------------- 로봇 머리 밟기
+  stompHit(rb) {
+    const p = this.p, feet = p.y - 0.38;
+    return p.vy < 0 && Math.abs(rb.x - p.x) < 0.62 && feet > rb.y + 0.05 && feet < rb.y + 0.62;
+  }
+  stomp(rb) {
+    const p = this.p;
+    p.vy = JUMP * 0.9; p.airJumps = 1; p.puff = 0.2;
+    if (rb.hat) {
+      // 안전모를 쓴 로봇: 안전모만 날아가고 로봇은 멀쩡함 (한 번 더 밟아야 기절)
+      rb.hat = false; audio.sfx('clang', this.near(rb.x, rb.y));
+      this.hats.push({ x: rb.x, y: rb.y + 0.55, vx: (p.x < rb.x ? 1 : -1) * 2.5, vy: 6, t: 0, rot: 0 });
+      return;
+    }
+    rb.stun = Math.max(1.6, 3.4 - 0.15 * this.n); rb.stunT = 0;   // 스테이지가 오를수록 빨리 깨어남
+    if (rb.vx) rb.stunVx = rb.vx; else if (rb.saveVx) rb.stunVx = rb.saveVx;
+    rb.vx = 0; rb.wind = 0; rb.hop = 0;
+    audio.sfx('stomp', this.near(rb.x, rb.y));
+  }
+  // ---------------------------------------------------------------- 강치
+  // 위에서 밟으면 '끄앙!' 하고 높이 튕겨 줌
+  updateSeals(dt) {
+    const p = this.p, feet = p.y - 0.38;
+    for (const sl of this.seals) {
+      if (sl.anim >= 0) { sl.anim += dt; if (sl.anim > 0.9) sl.anim = -1; }
+      if (!p.riding && p.vy < 0 && Math.abs(p.x - sl.x) < 0.62 && feet > sl.y + 0.3 && feet < sl.y + 1.0) {
+        p.vy = SEAL_BOUNCE; p.airJumps = 1; p.puff = 0.25; p.kb = 0; sl.anim = 0;
+        audio.sfx('seal', this.near(sl.x, sl.y));
+      }
+    }
+  }
+  // 체크포인트(힌트·정령을 얻은 자리): 그 아래 바닥 위에서 다시 시작하고, 바닥에 빛나는 표시
+  setCheckpoint(x, y) {
+    let best = null;
+    for (const s of this.solids) {
+      if (s.off || s.crumble) continue;
+      const top = s.y + s.h;
+      if (s.x < x + 0.3 && s.x + s.w > x - 0.3 && top <= y + 0.3 && (!best || top > best)) best = top;
+    }
+    if (best === null) { this.start = [x, y]; this.cp = null; return; }
+    this.start = [x, best + 0.45]; this.cp = { x, y: best };
+  }
   // ---------------------------------------------------------------- 무너지는 블록
   // 밟으면 1초 동안 흔들리다(우지직) 아래로 떨어지며 사라지고, 3초 뒤 제자리에 다시 생김
   updateCrumbles(dt) {
@@ -529,7 +592,7 @@ export class StageScene {
           g.dir = dir;
           if (g.rider && u >= 0.92) {
             g.rider = false; g.ready = false;
-            p.riding = null; p.vx = 0; p.vy = 0; p.lastGround = p.y; p.airJumps = 1; p.coyote = 0;
+            p.riding = null; p.vx = 0; p.svx = 0; p.vy = 0; p.lastGround = p.y; p.airJumps = 1; p.coyote = 0;
           }
           g.sx = g.x; g.sy = g.y;
         } else {
@@ -552,7 +615,7 @@ export class StageScene {
   }
   respawn() {
     const p = this.p; p.kb = 0;   // 보호막(p.shields)은 떨어져서 다시 시작해도 그대로 남음 (스테이지를 나가면 새 판이라 없어짐)
-    p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.blink = 1.2; p.lastGround = p.y;
+    p.x = this.start[0]; p.y = this.start[1]; p.vx = p.vy = 0; p.svx = 0; p.blink = 1.2; p.lastGround = p.y;
   }
   touchDoor() {
     if (this.modal) return;
@@ -626,7 +689,7 @@ export class StageScene {
     for (const t of this.tiles) {
       if (t.p.deadly) continue;
       const s = t.solid;
-      if (!s) { this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy); continue; }
+      if (!s) { this.drawWorldSprite(spriteInfo(t.p.s), t.p.x, t.p.y, t.p.sx, t.p.sy); this.drawSnowCap(t.p.x - 0.5, t.p.y + 0.5, 1); continue; }
       // 무너지는 블록: 금 간 무늬, 밟으면 흔들림 → 떨어지며 흐려짐 → 다시 생김
       if (s.st === 'gone') continue;
       const shake = s.st === 'shake' ? Math.sin(this.t * 55) * 0.05 * (0.5 + s.t) : 0;
@@ -641,6 +704,7 @@ export class StageScene {
       if (s.st === 'shake' && s.t > 0.5) { ctx.moveTo(cx + U * 0.1, cy + U * 0.66); ctx.lineTo(cx + U * 0.3, cy + U * 0.78); ctx.moveTo(cx + U * 0.62, cy + U * 0.86); ctx.lineTo(cx + U * 0.9, cy + U * 0.8); }
       ctx.stroke();
       // 흔들릴 때 부스러기
+      if (s.st === 'idle' || s.st === 'back') this.drawSnowCap(t.p.x - 0.5, t.p.y + 0.5, 1);
       if (s.st === 'shake' || s.st === 'fall') {
         ctx.fillStyle = '#7a4a2a';
         for (let j = 0; j < 4; j++) { const ft = (this.t * 1.7 + j * 0.27) % 1; ctx.fillRect(Math.round(cx + U * (0.15 + j * 0.22)), Math.round(cy + U + ft * U * 0.8), 4, 4); }
@@ -656,6 +720,7 @@ export class StageScene {
         const s = m.w === 1 ? 'Platforms__Single' : k === 0 ? 'Platforms__Single_Left' : k === m.w - 1 ? 'Platforms__Single_Right' : 'Platforms__Single';
         this.drawWorldSprite(spriteInfo(s), m.x + k + 0.5, m.y + 0.5, 1, 1);
       }
+      this.drawSnowCap(m.x, m.y + 1, m.w);
       const [px, py] = this.w2s(m.x, m.y + 1);
       ctx.save(); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(px + 2, py + 2, m.w * U - 4, U - 4); ctx.restore();
     }
@@ -682,13 +747,40 @@ export class StageScene {
       const [px, py] = this.w2s(s.x, s.y + 1);
       text('!', px, py - 20 + Math.sin(this.t * 6) * 4, { size: 34, align: 'center', color: '#ffe066', stroke: '#2b2b2b', strokeW: 6 });
     }
+    // 체크포인트 바닥 표시 (빛나는 띠 + 올라가는 반짝이)
+    if (this.cp) {
+      const [cx, cy] = this.w2s(this.cp.x, this.cp.y), pulse = 0.55 + 0.35 * Math.sin(this.t * 4);
+      ctx.save();
+      ctx.fillStyle = `rgba(255,245,170,${pulse * 0.45})`; ctx.fillRect(Math.round(cx - U * 0.7), Math.round(cy - 34), Math.round(U * 1.4), 28);
+      ctx.fillStyle = '#3a2f28'; ctx.fillRect(Math.round(cx - U * 0.8) - 2, Math.round(cy - 10), Math.round(U * 1.6) + 4, 12);
+      ctx.fillStyle = `rgba(255,224,60,${0.75 + 0.25 * Math.sin(this.t * 4)})`; ctx.fillRect(Math.round(cx - U * 0.8), Math.round(cy - 8), Math.round(U * 1.6), 8);
+      ctx.fillStyle = '#fff3a0';
+      for (let j = 0; j < 4; j++) { const ft = (this.t * 0.8 + j * 0.25) % 1; ctx.globalAlpha = 1 - ft; ctx.fillRect(Math.round(cx - U * 0.55 + j * U * 0.35), Math.round(cy - 8 - ft * U * 0.9), 4, 4); }
+      ctx.restore();
+    }
+    // 강치
+    for (const sl of this.seals) {
+      const [sx, sy] = this.w2s(sl.x, sl.y);
+      if (sx < -100 || sx > W + 100) continue;
+      const a = sl.anim, fr = a < 0 ? (Math.floor(this.t / 0.6) % 2 ? 5 : 0) : a < 0.08 ? 1 : a < 0.2 ? 2 : a < 0.35 ? 3 : a < 0.7 ? 4 : 0;
+      ctx.drawImage(img('seal'), fr * 120, 0, 120, 110, Math.round(sx - 60), Math.round(sy - 110 + 4), 120, 110);
+    }
+    // 날아가는 안전모
+    for (const h of this.hats) {
+      const [hx, hy] = this.w2s(h.x, h.y), k = 0.95 * U / 80;
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - h.t / 1.2); ctx.translate(hx, hy); ctx.rotate(h.rot);
+      ctx.drawImage(img('hardhat'), -35 * k, -17.5 * k, 70 * k, 35 * k); ctx.restore();
+    }
     for (const rb of this.robots) {
       const blue = rb.blue;
       const fr = Math.floor(rb.t * (rb.walk ? 8 : 5)) % 8;
       const frame = blue ? [fr * 81, 0, 80, 80] : [fr * 80, 0, 80, 80];
       const facingRight = rb.wind > 0 ? rb.look > 0 : rb.vx > 0;
       if (rb.wind > 0) { const [wx, wy] = this.w2s(rb.x + rb.look * 0.35, rb.y + 0.7); if (rb.brown) this.drawPlane(wx, wy, rb.look > 0 ? -0.3 : Math.PI + 0.3, 1.1); else this.drawPaper(wx, wy, this.t * 2, 1.2); }
-      this.drawSheet(blue ? 'robo_blue' : rb.green ? 'robo_green' : rb.brown ? 'robo_brown' : 'robo_red', frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      const color = blue ? 'blue' : rb.green ? 'green' : rb.brown ? 'brown' : 'red';
+      if (rb.stun > 0) this.drawStun(rb, color, facingRight);
+      else this.drawSheet('robo_' + color, frame, rb.x, rb.y + 0.02, rb.hop > 0 ? 0.95 * (1 + rb.hop * 0.4) : 0.95, facingRight, rb.solved ? 0.35 : (rb.appear > 0 ? (Math.floor(rb.appear * 10) % 2 ? 0.2 : 0.8) : 1));
+      if (rb.hat && !(rb.appear > 0)) this.drawHat(rb.x, rb.y + 0.02, blue, facingRight, rb.hop > 0 ? 1 + rb.hop * 0.4 : 1);
       // 색을 구별하기 어려운 친구도 알아보게: 초록 로봇은 머리 위에 종이 뭉치, 갈색 로봇은 종이비행기 표시
       if ((rb.green || rb.brown) && !(rb.wind > 0)) {
         const [ix, iy] = this.w2s(rb.x, rb.y + 0.95 + Math.sin(this.t * 3 + rb.x) * 0.05);
@@ -827,6 +919,39 @@ export class StageScene {
       }
     }
   }
+  // 눈 오는 날: 발판 위에 눈이 점점 쌓임 (도트 느낌으로 4px 단위)
+  drawSnowCap(x0, top, w) {
+    if (this.weather !== 'snow') return;
+    const [sx, sy] = this.w2s(x0, top);
+    if (sx > W + 10 || sx + w * U < -10 || sy < -40 || sy > H + 40) return;
+    const grow = Math.min(1, 0.35 + this.t / 40);   // 들어오자마자 살짝 덮여 있고 40초쯤 지나면 소복이
+    ctx.fillStyle = '#f4f8ff';
+    const cells = Math.round(w * U / 8);
+    for (let i = 0; i < cells; i++) {
+      const bump = ((Math.floor(x0 * 7) + i) * 37 % 5);   // 칸마다 다른 높이 (울퉁불퉁)
+      const h = Math.round((3 + bump * 0.9) * grow) * 2 + 4;
+      ctx.fillRect(Math.round(sx + i * 8), Math.round(sy - h + 4), 8, h);
+    }
+    ctx.fillStyle = '#c9d8ec';
+    ctx.fillRect(Math.round(sx), Math.round(sy + 2), Math.round(w * U), 2);   // 눈 아래 그늘
+  }
+  // 기절한 로봇 (80×112 칸: 아래쪽 80×80이 보통 로봇과 같은 자리)
+  drawStun(rb, color, facingRight) {
+    const t = rb.stunT, left = rb.stun;
+    const fr = t < 0.12 ? 1 : t < 0.45 ? 2 : left < 0.5 ? 3 : 4 + Math.floor((t - 0.45) / 0.16) % 4;
+    const [px, py] = this.w2s(rb.x, rb.y + 0.02), s = 0.95 * U, k = s / 80;
+    const x = px - s / 2, y = py + s / 2 - 112 * k;
+    ctx.save();
+    if (!facingRight) { ctx.translate(Math.round(px), 0); ctx.scale(-1, 1); ctx.translate(-Math.round(px), 0); }
+    ctx.drawImage(img('robo_' + color + '_stun'), fr * 80, 0, 80, 112, Math.round(x), Math.round(y), Math.round(80 * k), Math.round(112 * k));
+    ctx.restore();
+  }
+  // 로봇 머리 위 안전모 (로봇 그림과 같은 도트 크기)
+  drawHat(x, y, blue, facingRight, sc) {
+    const [px, py] = this.w2s(x, y), s = 0.95 * U * sc, k = s / 80;
+    const top = blue ? 0 : 5, cx = facingRight ? 37 : 43;   // 그림이 뒤집히면 머리 가운데도 반대쪽
+    ctx.drawImage(img('hardhat'), Math.round(px - s / 2 + (cx - 35) * k), Math.round(py - s / 2 + (top + 14 - 35) * k), Math.round(70 * k), Math.round(35 * k));
+  }
   drawMinimap() {
     const x = W - 270, y = 78, w = 250, h = 130;
     // 맵이 길면 주인공 주변 70칸만 보여 줌
@@ -878,7 +1003,7 @@ export class StageScene {
     panel(14, 12, 190, 52, { r: 8, inner: false });
     text(`스테이지${this.n}`, 109, 20, { size: 30, align: 'center' });
     panel(214, 12, 170, 52, { r: 8, inner: false }); drawFit(img('dp'), 220, 16, 44, 44); text(fmt(save.dp), 372, 22, { size: 28, align: 'right' });
-    if (this.weather !== 'clear') { panel(394, 12, 130, 52, { r: 8, inner: false, fill: this.weather === 'rain' ? '#d6e4f0' : '#f4f8ff' }); text(this.weather === 'rain' ? '비 오는 날' : '눈 오는 날', 459, 24, { size: 24, align: 'center', color: '#2b3a4a' }); }
+    if (this.weather !== 'clear') { panel(394, 12, 130, 52, { r: 8, inner: false, fill: this.weather === 'rain' ? '#d6e4f0' : '#f4f8ff' }); text(this.weather === 'rain' ? '비 오는 날' : '미끄러운 눈길', 459, this.weather === 'rain' ? 24 : 26, { size: this.weather === 'rain' ? 24 : 20, align: 'center', color: '#2b3a4a' }); }
     // 열쇠 3개 + 정령
     for (let k = 1; k <= 3; k++) {
       const key = this.keys.find(q => q.n === k), got = key && key.got;
@@ -986,18 +1111,21 @@ export class StageScene {
       drawFit(img('daddy_small'), 140, 44, 64, 64, { frame: [0, 0, 82, 82] });
       text('게임 방법 안내', 216, 56, { size: 40, color: '#7a3b12' });
       // 한 줄에 그림 하나 + 설명 하나
-      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['robo_red', [0, 0, 80, 80]], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['crumble'], ['daddy_small', [0, 0, 82, 82]]];
+      const icons = [['boy_jump', [160, 0, 80, 80]], ['mover'], ['dokdo_icon', [160, 0, 160, 160]], ['spirit'], ['robo_blue', [0, 0, 80, 80]], ['stun'], ['robo_green', [0, 0, 80, 80]], ['robo_brown', [0, 0, 80, 80]], ['down'], ['gull'], ['crumble'], ['seal'], ['snow'], ['daddy_small', [0, 0, 82, 82]]];
       GUIDE.forEach((g, k) => {
-        const y = 108 + k * 41;
-        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 39);
+        const y = 106 + k * 36;
+        ctx.fillStyle = k % 2 ? 'rgba(122,59,18,.06)' : 'rgba(122,59,18,.12)'; ctx.fillRect(130, y, W - 260, 34);
         const [n, fr] = icons[k] || [];
         if (n === 'mover') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 148, y + 5, 40, 30); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.strokeRect(148, y + 5, 40, 30); }
         else if (n === 'spirit') { const info = d.spirit ? spriteInfo(d.spirit.s) : null; if (info?.im) drawFit(info.im, 148, y + 1, 40, 37, { shade: save.rescued[this.n - 1] ? null : '#000' }); }
         else if (n === 'down') text('▼', 168, y + 2, { size: 30, align: 'center', color: '#7a3b12' });
         else if (n === 'gull') { const f = GULL.idle[0]; ctx.drawImage(img('gull'), f.x, f.y, f.w, f.h, 147, y + 1, f.w * 2, f.h * 2); }
+        else if (n === 'stun') { ctx.drawImage(img('robo_red_stun'), 4 * 80, 0, 80, 112, 150, y - 12, 34, 48); }
+        else if (n === 'seal') { ctx.drawImage(img('seal'), 0, 0, 120, 110, 146, y - 2, 40, 37); }
+        else if (n === 'snow') { ctx.strokeStyle = '#5b8fc7'; ctx.lineWidth = 3; ctx.beginPath(); for (let a = 0; a < 3; a++) { const an = a * Math.PI / 3; ctx.moveTo(168 - Math.cos(an) * 12, y + 17 - Math.sin(an) * 12); ctx.lineTo(168 + Math.cos(an) * 12, y + 17 + Math.sin(an) * 12); } ctx.stroke(); }
         else if (n === 'crumble') { const t = spriteInfo('Platforms__Single'); if (t?.im) drawFit(t.im, 152, y + 3, 32, 32); ctx.strokeStyle = 'rgba(40,24,16,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(160, y + 14); ctx.lineTo(166, y + 22); ctx.lineTo(162, y + 30); ctx.moveTo(176, y + 12); ctx.lineTo(172, y + 22); ctx.lineTo(178, y + 28); ctx.stroke(); }
         else if (n) drawFit(img(n), 148, y + 1, 40, 37, { frame: fr });
-        textBox(g, 214, y + 1, W - 360, 37, { size: 19, align: 'left' });
+        textBox(g, 214, y + 1, W - 360, 33, { size: 18, align: 'left' });
       });
       if (button('닫기', W / 2 - 90, H - 98, 180, 56, { layer: L }) || keyHit('Escape', 'Enter')) close();
     } else if (m.type === 'pause') {

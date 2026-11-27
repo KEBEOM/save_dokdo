@@ -416,6 +416,9 @@ export const audio = {
       case 'plane': noise(0.35, 0.05, 0, 1800, 3); tone(500, 0.3, 'sine', 0.03, 0, 300); break;              // 종이비행기 휙
       case 'crack': noise(0.12, 0.09, 0, 1200, 1.2); noise(0.1, 0.07, 0.14, 900, 1.2); noise(0.1, 0.06, 0.3, 1400, 1.2); break;   // 우지직 (블록에 금이 감)
       case 'crumble': noise(0.35, 0.12, 0, 600, 0.8); tone(140, 0.3, 'triangle', 0.06, 0, -70); break;   // 와르르 (블록이 무너짐)
+      case 'stomp': tone(520, 0.07, 'square', 0.06, 0, -300); tone(880, 0.1, 'triangle', 0.05, 0.06, 300); break;   // 뿅 (로봇 머리 밟기)
+      case 'clang': tone(1400, 0.18, 'triangle', 0.06, 0, -200); tone(2100, 0.12, 'sine', 0.04, 0.01, -300); noise(0.05, 0.06, 0, 5000, 2); break;   // 깡 (안전모)
+      case 'seal': tone(260, 0.22, 'sawtooth', 0.045, 0, -110); tone(200, 0.2, 'sawtooth', 0.04, 0.2, -60); tone(420, 0.35, 'triangle', 0.05, 0.08, 520); break;   // 끄앙~ (강치가 튕겨 줌)
       case 'thud': noise(0.06, 0.2, 0, 2800, 0.9); noise(0.05, 0.15, 0.05, 1800, 0.9); break;                  // 종이 바스락 (떨어짐)
       // 로봇 소리 (가까울수록 크게)
       case 'robo_red': robo(pick(700, 1600, 5 + Math.floor(Math.random() * 2)), 0.05, 0.05, 0, 'triangle', 45); break;   // 삐리리빅 (작고 부드러운 기계음)

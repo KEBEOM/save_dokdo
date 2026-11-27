@@ -33,6 +33,7 @@ function makeLevel(orig, n) {
   const reserved = [];                         // 움직이는 발판이 지나가는 자리 (다른 발판을 놓지 않음)
   const coins = [];
   const gulls = [];                            // 괭이갈매기 (넓은 바다를 건네주는 새)
+  const seals = [];                            // 강치 (밟으면 높이 튕겨 줌)
   let x = -3, top = 0, last = null;
 
   const add = (x0, w, t, kind, onPath = true) => {
@@ -138,6 +139,17 @@ function makeLevel(orig, n) {
       }
       last = q; top = q.top;
     },
+    // 강치 바위: 발판 위 강치를 밟아야만 닿는 높은 발판 (강치가 높이 튕겨 줌)
+    seal() {
+      const base = add(endOf(last) + rand(1.4, 2.0), irand(4, 5), top + rand(-0.5, 0.5), 'path');
+      coinBetween(last, base);
+      base.sealBase = true;
+      seals.push({ x: base.x0 + base.w - 1.5, y: base.top });   // 발판 오른쪽 가까이 (높은 발판 바로 아래쪽)
+      const hi = add(base.x0 + base.w + rand(0, 0.6), irand(3, 4), base.top + half(rand(5.5, 7)), 'ledge');
+      for (let k = 1; k <= 4; k++) coins.push([base.x0 + base.w - 1.5 + k * 0.35, base.top + 1.6 + k * 1.3]);   // 튕겨 오르는 길에 독도 포인트
+      reserved.push({ x0: base.x0, w: base.w + 3, top: hi.top + 1, bottom: base.top + 1 });
+      last = hi; top = hi.top;
+    },
     // 징검돌: 하나씩 떠 있는 블록을 연달아 밟고 건너기 (밟으면 잠시 뒤 무너짐)
     stones() {
       const k = irand(3, 3 + Math.round(2 * e));
@@ -170,8 +182,9 @@ function makeLevel(orig, n) {
   if (n >= 6) pool.push('ferry', 'pillars');
   if (n >= 4) pool.push('gull');
   if (n >= 2) pool.push('stones');
+  if (n >= 2) pool.push('seal');
   const plan = ['run', 'climb', 'drop'];
-  if (n >= 2) plan.push('lift', 'gull', 'stones');   // 2스테이지부터 괭이갈매기 구간이 꼭 하나 이상
+  if (n >= 2) plan.push('lift', 'gull', 'stones', 'seal');   // 2스테이지부터 괭이갈매기 구간이 꼭 하나 이상
   if (n >= 3) plan.push('ferry');
   while (plan.length < segCount) plan.push(pick(pool));
   // 첫 구역은 달리기, 나머지는 섞되 같은 구역이 연달아 나오지 않게
@@ -239,7 +252,7 @@ function makeLevel(orig, n) {
   const robots = [];
   const used = new Set();
   const itemPlats = new Set([...keyPlats, spiritPlat]);
-  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0) && !p.gullBase && !p.crumble;   // 갈매기가 앉는 발판·무너지는 블록에는 로봇 없음
+  const free = p => !used.has(p) && !itemPlats.has(p) && p !== at(0) && !p.gullBase && !p.crumble && !p.sealBase;   // 갈매기가 앉는 발판·무너지는 블록에는 로봇 없음
   // 1) 문제를 내는 파란 로봇 (원작 스테이지의 문제 그대로): 맵 전체에 고르게
   const qs = [...new Set(orig.robots.filter(r => r.q).map(r => r.q))];
   const qSpots = path.filter(p => p.w >= 2 && p.kind !== 'ledge' && p.kind !== 'climb' && p.kind !== 'pillar' && free(p));
@@ -253,20 +266,21 @@ function makeLevel(orig, n) {
   });
   // 2) 걸어 다니는 로봇 자리: 갈색(종이비행기) → 초록(종이 뭉치) → 빨간 순서로 꼭 필요한 만큼 먼저
   const walkSpots = path.filter(p => p.w >= (n >= 4 ? 2 : 3) && p.kind !== 'ledge' && p.kind !== 'climb' && free(p)).sort((a, b) => b.w - a.w + Math.random() * 2 - 1);
-  const addWalker = (p, extra) => { used.add(p); robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: 1.3 + 0.2 * n, plat: p, ...extra }); };
+  const hatOn = () => n >= 3 && Math.random() < Math.min(0.55, 0.1 + 0.05 * n);   // 3스테이지부터 안전모 쓴 로봇 (밟아도 한 번은 버팀)
+  const addWalker = (p, extra) => { used.add(p); robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: false, walk: true, q: null, flip: Math.random() < 0.5, speed: (1.3 + 0.2 * n) * 1.2, plat: p, hat: hatOn(), ...extra }); };
   const brownCount = n >= 3 ? 1 + Math.floor(n / 4) : 0;     // 3스테이지부터
   const greenCount = n >= 2 ? 1 + Math.floor(n / 3) : 0;     // 2스테이지부터
   let wi = 0;
-  for (let k = 0; k < brownCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { brown: true, speed: 0.8 });
-  for (let k = 0; k < greenCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { green: true, speed: 0.9 + 0.08 * n });
+  for (let k = 0; k < brownCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { brown: true, speed: 0.95 });
+  for (let k = 0; k < greenCount && wi < walkSpots.length; k++) addWalker(walkSpots[wi++], { green: true, speed: 1.05 + 0.1 * n });
   // 3) 남은 자리: 빨간 로봇과 가만히 서서 뛰어오르는 파란 로봇(장애물)이 나눠 씀
   const leftover = path.filter(p => p.w >= 2 && p.kind !== "ledge" && p.kind !== "climb" && p.kind !== "pillar" && free(p)).sort(() => Math.random() - 0.5);
-  const blockers = Math.min(Math.round(n), Math.floor(leftover.length * 0.35));   // 맵이 1.5배 길어진 만큼 로봇도 1.5배 (빽빽한 정도는 그대로)
+  const blockers = Math.min(Math.round(1.3 * n), Math.floor(leftover.length * 0.4));   // 맵이 1.5배 길어진 만큼 로봇도 1.5배 (빽빽한 정도는 그대로)
   for (let k = 0; k < blockers; k++) {
     const p = leftover[k]; used.add(p);
-    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true, plat: p });
+    robots.push({ x: p.x0 + p.w / 2, y: p.top + 0.4, blue: true, walk: false, q: null, flip: true, plat: p, hat: hatOn() });
   }
-  const redTarget = Math.round((2 + 2.2 * n) * 1.5);
+  const redTarget = Math.round((2 + 2.2 * n) * 1.5 * 1.25);   // 머리를 밟아 기절시킬 수 있으니 로봇을 더 많이
   for (const p of walkSpots.slice(wi)) { if (robots.filter(r => r.walk && !r.green && !r.brown).length >= redTarget) break; if (free(p)) addWalker(p, {}); }
 
 
@@ -294,6 +308,7 @@ function makeLevel(orig, n) {
   if (spiritObj) lift(spiritObj, 0.55);
   const doorZone = { x: end.x0, y: end.top, w: end.w, h: 3 };
   const items = keyObjs.map(o => ({ x: o.x - 0.5, y: o.y - 0.5, w: 1, h: 1 }));
+  for (const sl of seals) items.push({ x: sl.x - 0.7, y: sl.y, w: 1.4, h: 1.0 });
   for (const g of gulls) for (const [gx, gy, dr] of [[...g.a, 1], [...g.b, -1]]) items.push({ x: gx - 0.56 * dr - 0.9, y: gy - 0.85, w: 1.8, h: 1.8 });
   if (spiritObj) items.push({ x: spiritObj.x - 0.7, y: spiritObj.y - 0.7, w: 1.4, h: 1.4 });
   // 독도 포인트: 지형·로봇·열쇠·정령·문·다른 포인트와 겹치면 빼기
@@ -310,7 +325,7 @@ function makeLevel(orig, n) {
   const start = [0, 1.2];
   const deco = [{ s: 'StartGuide__StartGuide_' + (n - 1), x: -1.8, y: 0.55, sx: 1.376, sy: 1.376 }];
   return {
-    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco, gulls,
+    platforms, movers, coins, robots, keys: keyObjs, spirit: spiritObj, door, flag, start, deco, gulls, seals,
     topLeft: [-4, Math.max(...ys) + 6], bottomRight: [end.x0 + end.w + 2, Math.min(...ys) - 1],
     generated: true,
     shortfall: Math.max(0, brownCount - robots.filter(r => r.brown).length) + Math.max(0, greenCount - robots.filter(r => r.green).length),
